@@ -1,0 +1,166 @@
+{
+  "realm": "simple-cd",
+  "enabled": true,
+  "sslRequired": "none",
+  "clients": [
+    {
+      "clientId": "simple-cd",
+      "name": "simple-cd",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "dev-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://127.0.0.1:8080/auth/callback",
+        "http://127.0.0.1:5173/auth/callback"
+      ],
+      "webOrigins": [
+        "+"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://127.0.0.1:8080/*##http://127.0.0.1:5173/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "client roles in ID token",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-client-role-mapper",
+          "config": {
+            "usermodel.clientRoleMapping.clientId": "simple-cd",
+            "claim.name": "resource_access.${client_id}.roles",
+            "multivalued": "true",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "false"
+          }
+        }
+      ]
+    }
+  ],
+  "roles": {
+    "client": {
+      "simple-cd": [
+        {
+          "name": "platform-admin"
+        },
+        {
+          "name": "project:example/demo:developer"
+        },
+        {
+          "name": "project:example/demo:maintainer"
+        },
+        {
+          "name": "deploy:demo-prod"
+        },
+        {
+          "name": "project:example/tools:developer"
+        }
+      ]
+    }
+  },
+  "users": [
+    {
+      "username": "alice",
+      "enabled": true,
+      "email": "alice@example.org",
+      "emailVerified": true,
+      "firstName": "Alice",
+      "lastName": "Example",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "dev",
+          "temporary": false
+        }
+      ],
+      "clientRoles": {
+        "simple-cd": [
+          "project:example/demo:developer"
+        ]
+      }
+    },
+    {
+      "username": "bob",
+      "enabled": true,
+      "email": "bob@example.org",
+      "emailVerified": true,
+      "firstName": "Bob",
+      "lastName": "Example",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "dev",
+          "temporary": false
+        }
+      ],
+      "clientRoles": {
+        "simple-cd": [
+          "project:example/demo:developer"
+        ]
+      }
+    },
+    {
+      "username": "mia",
+      "enabled": true,
+      "email": "mia@example.org",
+      "emailVerified": true,
+      "firstName": "Mia",
+      "lastName": "Example",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "dev",
+          "temporary": false
+        }
+      ],
+      "clientRoles": {
+        "simple-cd": [
+          "project:example/demo:maintainer",
+          "deploy:demo-prod"
+        ]
+      }
+    },
+    {
+      "username": "root",
+      "enabled": true,
+      "email": "root@example.org",
+      "emailVerified": true,
+      "firstName": "Root",
+      "lastName": "Example",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "dev",
+          "temporary": false
+        }
+      ],
+      "clientRoles": {
+        "simple-cd": [
+          "platform-admin"
+        ]
+      }
+    },
+    {
+      "username": "guest",
+      "enabled": true,
+      "email": "guest@example.org",
+      "emailVerified": true,
+      "firstName": "Guest",
+      "lastName": "Example",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "dev",
+          "temporary": false
+        }
+      ],
+      "clientRoles": {
+        "simple-cd": []
+      }
+    }
+  ]
+}

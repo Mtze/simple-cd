@@ -1,0 +1,35 @@
+# Target config for local development (see docs/admin/configuration.md).
+defaults:
+  registries: [ghcr.io/example/]
+  lockDuration: 1h
+targets:
+  - id: demo-test
+    project: example/demo
+    type: helm
+    lockable: true
+    cluster: vault:secret/cd/clusters/test
+    namespace: demo
+  - id: demo-previews
+    project: example/demo
+    type: helm
+    preview: true
+    autoDeploy:
+      from: [pr]
+    cluster: vault:secret/cd/clusters/dev
+    previewTTL: 48h
+  - id: demo-prod
+    project: example/demo
+    type: compose
+    role: deploy:demo-prod
+    host: vm1.example.org
+    ssh: vault:secret/cd/ssh/demo-prod
+    dir: /opt/demo
+  - id: tools-vm
+    project: example/tools
+    type: ansible
+    ansible:
+      source: git@github.com:example/infra.git
+      ref: main
+      playbook: playbooks/tools.yml
+      inventory: inventories/prod
+      credentials: vault:secret/cd/ssh/tools
