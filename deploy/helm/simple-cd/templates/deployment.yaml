@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "simple-cd.name" . }}
+  labels: {{- include "simple-cd.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels: {{- include "simple-cd.selector" . | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "simple-cd.selector" . | nindent 8 }}
+      annotations:
+        {{- with .Values.podAnnotations }}{{ toYaml . | nindent 8 }}{{- end }}
+    spec:
+      serviceAccountName: {{ include "simple-cd.name" . }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: simple-cd
+          image: "{{ .Values.image.repository }}:{{ include "simple-cd.tag" (dict "tag" .Values.image.tag "root" .) }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["serve"]
+          ports:
+            - {name: http, containerPort: 8080}
+          env:
+            - {name: SIMPLECD_CONFIG, value: /config/config.yaml}
+            - {name: SIMPLECD_BASE_URL, value: {{ .Values.baseURL | quote }}}
+            - {name: SIMPLECD_DATABASE_URL_FILE, value: /secrets/database-url}
+            - {name: SIMPLECD_OIDC_ISSUER, value: {{ .Values.oidc.issuer | quote }}}
+            - {name: SIMPLECD_OIDC_CLIENT_ID, value: {{ .Values.oidc.clientID | quote }}}
+            - {name: SIMPLECD_OIDC_CLIENT_SECRET_FILE, value: /secrets/oidc-client-secret}
+            - {name: SIMPLECD_SESSION_TTL, value: {{ .Values.oidc.sessionTTL | quote }}}
+            - {name: SIMPLECD_GITHUB_APP_ID, value: {{ required "github.appID is required" .Values.github.appID | quote }}}
+            - {name: SIMPLECD_GITHUB_API_URL, value: {{ .Values.github.apiURL | quote }}}
+            - {name: SIMPLECD_GIT_SSH_HOST, value: {{ .Values.github.gitSSHHost | quote }}}
+            - {name: SIMPLECD_GITHUB_PRIVATE_KEY_FILE, value: /secrets/github-private-key}
+            - {name: SIMPLECD_GITHUB_WEBHOOK_SECRET_FILE, value: /secrets/github-webhook-secret}
+            {{- if .Values.registryAuth }}
+            - {name: SIMPLECD_REGISTRY_AUTH_FILE, value: /secrets/registry-auth}
+            {{- end }}
+            - {name: SIMPLECD_RUNNER, value: kubernetes}
+            - {name: SIMPLECD_EXECUTOR_IMAGE, value: "{{ .Values.executor.image }}:{{ include "simple-cd.tag" (dict "tag" .Values.executor.tag "root" .) }}"}
+            - {name: SIMPLECD_EXECUTOR_ANSIBLE_IMAGE, value: "{{ .Values.executor.ansibleImage }}:{{ include "simple-cd.tag" (dict "tag" .Values.executor.tag "root" .) }}"}
+            - {name: SIMPLECD_EXECUTOR_SERVICE_ACCOUNT, value: {{ .Values.executor.serviceAccount | quote }}}
+            - {name: VAULT_ADDR, value: {{ .Values.vault.address | quote }}}
+            - {name: SIMPLECD_VAULT_ROLE, value: {{ .Values.vault.role | quote }}}
+            - {name: SIMPLECD_VAULT_AUTH_MOUNT, value: {{ .Values.vault.authMount | quote }}}
+            {{- with .Values.vault.namespace }}
+            - {name: VAULT_NAMESPACE, value: {{ . | quote }}}
+            {{- end }}
+          readinessProbe:
+            httpGet: {path: /readyz, port: http}
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - {name: config, mountPath: /config, readOnly: true}
+            - {name: secrets, mountPath: /secrets, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: config
+          configMap: {name: {{ include "simple-cd.name" . }}-config}
+        - name: secrets
+          secret:
+            secretName: {{ .Values.existingSecret }}
+            items:
+              - {key: database-url, path: database-url}
+              - {key: oidc-client-secret, path: oidc-client-secret}
+              - {key: github-private-key, path: github-private-key}
+              - {key: github-webhook-secret, path: github-webhook-secret}
+              {{- if .Values.registryAuth }}
+              - {key: registry-auth, path: registry-auth}
+              {{- end }}
+        - name: tmp
+          emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}

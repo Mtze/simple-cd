@@ -1,0 +1,71 @@
+# Public URL of simple-cd. Used for the OIDC redirect, cookies and log links.
+baseURL: https://cd.example.org
+
+replicaCount: 2
+
+image:
+  repository: ghcr.io/mtze/simple-cd
+  tag: ""            # defaults to the chart's appVersion
+  pullPolicy: IfNotPresent
+
+executor:
+  image: ghcr.io/mtze/simple-cd-executor
+  ansibleImage: ghcr.io/mtze/simple-cd-executor-ansible
+  tag: ""            # defaults to the chart's appVersion
+  serviceAccount: simple-cd-executor
+  # Annotations for the executor service account, e.g. for workload identity.
+  serviceAccountAnnotations: {}
+
+vault:
+  address: https://vault.example.org
+  role: simple-cd-executor     # Vault Kubernetes auth role bound to the executor service account
+  authMount: kubernetes
+  namespace: ""                # Vault Enterprise namespace, optional
+
+oidc:
+  issuer: https://keycloak.example.org/realms/main
+  clientID: simple-cd
+  sessionTTL: 4h
+
+github:
+  appID: ""
+  apiURL: https://api.github.com
+  gitSSHHost: github.com
+
+# Secret with the keys listed below; create it yourself (or with an
+# external secrets operator). It is never rendered by this chart.
+#   database-url, oidc-client-secret, github-private-key, github-webhook-secret
+#   registry-auth (only with registryAuth: true)
+existingSecret: simple-cd
+
+# Set to true when the secret has a registry-auth key: a Docker config.json
+# the server uses to check images and charts in private registries.
+registryAuth: false
+
+# The target configuration (see docs/admin/configuration.md). Rendered into a
+# ConfigMap; the server reloads it without a restart.
+config:
+  defaults:
+    registries: [ghcr.io/example/]
+  targets: []
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  host: cd.example.org
+  tls:
+    secretName: ""
+
+resources:
+  requests: {cpu: 50m, memory: 64Mi}
+  limits: {memory: 256Mi}
+
+podAnnotations: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}

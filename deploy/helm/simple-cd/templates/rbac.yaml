@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "simple-cd.name" . }}
+  labels: {{- include "simple-cd.labels" . | nindent 4 }}
+---
+# The executor's identity for the Vault login. It needs no Kubernetes permissions.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.executor.serviceAccount }}
+  labels: {{- include "simple-cd.labels" . | nindent 4 }}
+  {{- with .Values.executor.serviceAccountAnnotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+---
+# The server only manages executor Jobs in its own namespace.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "simple-cd.name" . }}
+  labels: {{- include "simple-cd.labels" . | nindent 4 }}
+rules:
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["create", "get", "list", "delete"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "simple-cd.name" . }}
+  labels: {{- include "simple-cd.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "simple-cd.name" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "simple-cd.name" . }}
+    namespace: {{ .Release.Namespace }}

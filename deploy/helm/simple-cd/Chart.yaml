@@ -1,0 +1,8 @@
+apiVersion: v2
+name: simple-cd
+description: A small continuous delivery server for Docker Compose, Helm and Ansible targets
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://mtze.github.io/simple-cd/
+sources: [https://github.com/Mtze/simple-cd]
