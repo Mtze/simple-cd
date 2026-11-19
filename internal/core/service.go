@@ -20,6 +20,7 @@ var (
 	ErrNotFound    = errors.New("not found")
 	ErrMaintenance = errors.New("target is in maintenance")
 	ErrSlotBusy    = store.ErrSlotBusy
+	ErrNeedReason  = errors.New("a reason is required")
 )
 
 // NotDeployableError lists why an artifact cannot be deployed.
@@ -429,7 +430,7 @@ func (s *Service) SetMaintenance(ctx context.Context, u User, targetID string, o
 		return ErrForbidden
 	}
 	if on && strings.TrimSpace(reason) == "" {
-		return errors.New("a reason is required")
+		return ErrNeedReason
 	}
 	return s.Store.WithTx(ctx, func(tx *store.Store) error {
 		st, err := tx.LockTargetState(ctx, t.ID)

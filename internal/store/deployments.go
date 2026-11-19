@@ -171,3 +171,25 @@ func (s *Store) Dequeue(ctx context.Context, target, slot string) error {
 	_, err := s.db.Exec(ctx, `DELETE FROM deploy_queue WHERE target_id = $1 AND slot = $2`, target, slot)
 	return err
 }
+
+// CurrentDeployments returns the newest successful deploy per target in the
+// default slot, i.e. what runs on each non-preview target.
+func (s *Store) CurrentDeployments(ctx context.Context) (map[string]*Deployment, error) {
+	list, err := s.listDeployments(ctx, `id IN (
+		SELECT DISTINCT ON (target_id) id FROM deployments
+		WHERE slot = '' AND kind = 'deploy' AND status = 'succeeded'
+		ORDER BY target_id, finished_at DESC)`)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]*Deployment, len(list))
+	for _, d := range list {
+		out[d.TargetID] = d
+	}
+	return out, nil
+}
+
+// AllActive returns every pending or running deployment.
+func (s *Store) AllActive(ctx context.Context) ([]*Deployment, error) {
+	return s.listDeployments(ctx, `status IN ('pending','running') ORDER BY created_at`)
+}

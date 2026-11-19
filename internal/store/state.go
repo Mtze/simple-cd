@@ -196,3 +196,12 @@ func (s *Store) ExpirePreview(ctx context.Context, id int64, at time.Time) error
 	_, err := s.db.Exec(ctx, `UPDATE previews SET status = 'active', expires_at = $2, updated_at = now() WHERE id = $1`, id, at)
 	return err
 }
+
+func (s *Store) Preview(ctx context.Context, id int64) (*Preview, error) {
+	rows, err := s.db.Query(ctx, `SELECT `+previewCols+` FROM previews WHERE id = $1`, id)
+	if err != nil {
+		return nil, err
+	}
+	p, err := pgx.CollectExactlyOneRow(rows, pgx.RowToAddrOfStructByName[Preview])
+	return p, notFound(err)
+}
