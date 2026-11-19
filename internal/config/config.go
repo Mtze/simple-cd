@@ -343,12 +343,19 @@ func (c *Config) ProjectNames() []string {
 
 // HasProject reports whether the repo is a known project.
 func (c *Config) HasProject(repo string) bool {
+	_, ok := c.Project(repo)
+	return ok
+}
+
+// Project returns the project name as spelled in the config. GitHub names are
+// case-insensitive, so this keeps stored data consistent with the config.
+func (c *Config) Project(repo string) (string, bool) {
 	for _, p := range c.ProjectNames() {
 		if strings.EqualFold(p, repo) {
-			return true
+			return p, true
 		}
 	}
-	return false
+	return "", false
 }
 
 // TargetsOf returns the targets of a project.
