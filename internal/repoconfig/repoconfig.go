@@ -30,10 +30,31 @@ type RepoConfig struct {
 }
 
 type HelmConfig struct {
-	Chart  string            `yaml:"chart" json:"chart"`
-	Set    map[string]string `yaml:"set" json:"set,omitempty"`
-	Values map[string]string `yaml:"values" json:"values,omitempty"` // target id -> path in repo
+	Chart   string                `yaml:"chart" json:"chart"`
+	Set     map[string]string     `yaml:"set" json:"set,omitempty"`         // for every helm target
+	Targets map[string]HelmTarget `yaml:"targets" json:"targets,omitempty"` // per target id
 }
+
+// HelmTarget holds what only applies to one target.
+type HelmTarget struct {
+	Values string            `yaml:"values" json:"values,omitempty"` // values file in the repo
+	Set    map[string]string `yaml:"set" json:"set,omitempty"`       // added to (and overriding) helm.set
+}
+
+// SetFor returns helm.set merged with the target's own set entries.
+func (h *HelmConfig) SetFor(target string) map[string]string {
+	out := make(map[string]string, len(h.Set))
+	for k, v := range h.Set {
+		out[k] = v
+	}
+	for k, v := range h.Targets[target].Set {
+		out[k] = v
+	}
+	return out
+}
+
+// ValuesFile returns the target's values file path, or "".
+func (h *HelmConfig) ValuesFile(target string) string { return h.Targets[target].Values }
 
 type ComposeConfig struct {
 	Path string `yaml:"path" json:"path"`
@@ -56,9 +77,9 @@ func ParseRepoConfig(data []byte) (*RepoConfig, error) {
 		if !strings.HasPrefix(h.Chart, "oci://") {
 			errs = append(errs, errors.New("helm.chart must be an oci:// reference"))
 		}
-		for _, p := range h.Values {
-			if !safeRepoPath(p) {
-				errs = append(errs, fmt.Errorf("helm.values: invalid path %q", p))
+		for id, t := range h.Targets {
+			if t.Values != "" && !safeRepoPath(t.Values) {
+				errs = append(errs, fmt.Errorf("helm.targets.%s.values: invalid path %q", id, t.Values))
 			}
 		}
 	}

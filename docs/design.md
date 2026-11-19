@@ -75,14 +75,17 @@ CD-Server (Go, N Replicas)  ── Postgres
 ```yaml
 helm:
   chart: oci://ghcr.io/org/charts/app
-  set:
+  set:                       # für alle Helm-Targets
     server.image.repository: "{images.server.repository}"
     server.image.digest:     "{images.server.digest}"
     client.image:            "{images.client.ref}"
-    ingress.host:            "pr-{cd.pr}.app.preview.example.org"
-  values:
-    app-previews: deploy/values-preview.yaml
-    app-test:     deploy/values-test.yaml
+  targets:                   # nur für ein Target, überschreibt helm.set
+    app-previews:
+      values: deploy/values-preview.yaml
+      set:
+        ingress.host: "pr-{cd.pr}.app.preview.example.org"
+    app-test:
+      values: deploy/values-test.yaml
 compose:
   path: deploy/docker-compose.yml
 ansible:
@@ -137,9 +140,9 @@ Unvollständige Artefakte erscheinen mit Grund in der UI, sind aber nicht deploy
 Reihenfolge, der spätere Eintrag gewinnt:
 
 1. Defaults des Charts
-2. Values-Datei aus dem Repo für dieses Target (`.cd.yaml` → `helm.values`)
+2. Values-Datei aus dem Repo für dieses Target (`.cd.yaml` → `helm.targets.<id>.values`)
 3. Values aus der Target-Config bzw. Vault
-4. Generierte Werte aus `helm.set`
+4. Generierte Werte aus `helm.set`, ergänzt um `helm.targets.<id>.set`
 
 Der Executor schreibt alles in eine Datei und übergibt sie mit `-f`.
 Vor dem Deploy zeigt die UI den Diff der zusammengeführten Values (ohne Vault-Secrets) gegenüber dem letzten Deploy.

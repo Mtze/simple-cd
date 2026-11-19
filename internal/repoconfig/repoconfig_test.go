@@ -14,21 +14,32 @@ helm:
   chart: oci://ghcr.io/org/charts/app
   set:
     server.image: "{images.server.ref}"
-  values:
-    app-test: deploy/values-test.yaml
+  targets:
+    app-test:
+      values: deploy/values-test.yaml
+      set:
+        server.image: "{images.server.repository}"
+        host: test.example.org
 compose:
   path: deploy/docker-compose.yml
 `))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.Helm.Values["app-test"] != "deploy/values-test.yaml" || c.Compose.Path == "" {
+	if c.Helm.ValuesFile("app-test") != "deploy/values-test.yaml" || c.Helm.ValuesFile("other") != "" || c.Compose.Path == "" {
 		t.Fatalf("unexpected %+v", c)
+	}
+	if set := c.Helm.SetFor("app-test"); set["server.image"] != "{images.server.repository}" || set["host"] != "test.example.org" {
+		t.Fatalf("SetFor = %v", set)
+	}
+	if set := c.Helm.SetFor("other"); len(set) != 1 || c.Helm.Set["server.image"] != "{images.server.ref}" {
+		t.Fatalf("SetFor other = %v", set)
 	}
 	for _, bad := range []string{
 		"helm: {chart: https://x}",
 		"compose: {path: ../../etc/passwd}",
 		"compose: {path: /etc/passwd}",
+		"helm: {chart: oci://x, targets: {a: {values: ../x}}}",
 		"helm: {chart: oci://x, typo: 1}",
 	} {
 		if _, err := ParseRepoConfig([]byte(bad)); err == nil {

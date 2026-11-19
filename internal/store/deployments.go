@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -52,13 +53,16 @@ func (s *Store) InsertDeployment(ctx context.Context, d *Deployment) (*Deploymen
 	}
 	rows, err := s.db.Query(ctx, `
 		INSERT INTO deployments (kind, artifact_id, target_id, slot, actor, actor_detail, status, snapshot)
-		VALUES ($1,$2,$3,$4,$5,$6,'pending',$7) RETURNING `+deploymentCols,
+		VALUES ($1,$2,$3,$4,$5,$6,'pending',$7)
+		ON CONFLICT (target_id, slot) WHERE status IN ('pending','running') DO NOTHING
+		RETURNING `+deploymentCols,
 		d.Kind, d.ArtifactID, d.TargetID, d.Slot, d.Actor, d.ActorDetail, d.Snapshot)
 	if err != nil {
 		return nil, err
 	}
+	// DO NOTHING instead of a unique violation keeps a surrounding transaction usable.
 	out, err := pgx.CollectExactlyOneRow(rows, pgx.RowToAddrOfStructByName[Deployment])
-	if isUniqueViolation(err, "deployments_one_active") {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrSlotBusy
 	}
 	return out, err

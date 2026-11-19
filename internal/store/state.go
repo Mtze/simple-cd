@@ -146,7 +146,7 @@ func (s *Store) PreviewsOfPR(ctx context.Context, repo string, pr int) ([]*Previ
 }
 
 func (s *Store) ExpiredPreviews(ctx context.Context, now time.Time) ([]*Preview, error) {
-	rows, err := s.db.Query(ctx, `SELECT `+previewCols+` FROM previews WHERE status = 'active' AND expires_at < $1`, now)
+	rows, err := s.db.Query(ctx, `SELECT `+previewCols+` FROM previews WHERE status = 'active' AND expires_at <= $1`, now)
 	if err != nil {
 		return nil, err
 	}
@@ -189,4 +189,10 @@ func (s *Store) AuditEvents(ctx context.Context, beforeID int64, limit int) ([]A
 func (s *Store) DeleteOldAudit(ctx context.Context, before time.Time) (int64, error) {
 	tag, err := s.db.Exec(ctx, `DELETE FROM audit_events WHERE at < $1`, before)
 	return tag.RowsAffected(), err
+}
+
+// ExpirePreview sets a preview's expiry, e.g. to now so the worker retries its teardown.
+func (s *Store) ExpirePreview(ctx context.Context, id int64, at time.Time) error {
+	_, err := s.db.Exec(ctx, `UPDATE previews SET status = 'active', expires_at = $2, updated_at = now() WHERE id = $1`, id, at)
+	return err
 }

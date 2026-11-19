@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io/fs"
 	"sort"
-	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -104,11 +103,6 @@ func (s *Store) Migrate(ctx context.Context) error {
 		}
 	}
 	return nil
-}
-
-func isUniqueViolation(err error, constraint string) bool {
-	var pe *pgconn.PgError
-	return errors.As(err, &pe) && pe.Code == "23505" && (constraint == "" || strings.Contains(pe.ConstraintName, constraint))
 }
 
 func notFound(err error) error {

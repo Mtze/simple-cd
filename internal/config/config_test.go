@@ -102,17 +102,17 @@ func TestParseRejects(t *testing.T) {
 targets:
   - {id: a, project: o/r, type: compose, host: h, ssh: "vault:x", dir: /d}
   - {id: a, project: o/r, type: compose, host: h, ssh: "vault:x", dir: /d}`, "duplicate"},
-		"no registries":    {`targets: [{id: a, project: o/r, type: compose, host: h, ssh: "vault:x", dir: /d}]`, "no allowed registries"},
-		"preview lockable": {`defaults: {registries: [r/]}` + "\n" + `targets: [{id: a, project: o/r, type: helm, cluster: "vault:c", preview: true, lockable: true}]`, "cannot be lockable"},
-		"preview compose":  {`defaults: {registries: [r/]}` + "\n" + `targets: [{id: a, project: o/r, type: compose, host: h, ssh: "vault:x", dir: /d, preview: true}]`, "only supported for helm"},
-		"secret inline":    {`defaults: {registries: [r/]}` + "\n" + `targets: [{id: a, project: o/r, type: compose, host: h, ssh: "-----BEGIN", dir: /d}]`, "vault: reference"},
-		"relative dir":     {`defaults: {registries: [r/]}` + "\n" + `targets: [{id: a, project: o/r, type: compose, host: h, ssh: "vault:x", dir: opt}]`, "absolute"},
-		"helm namespace":   {`defaults: {registries: [r/]}` + "\n" + `targets: [{id: a, project: o/r, type: helm, cluster: "vault:c"}]`, "namespace is required"},
-		"bad source":       {`defaults: {registries: [r/]}` + "\n" + `targets: [{id: a, project: o/r, type: helm, cluster: "vault:c", namespace: n, autoDeploy: {from: [tag]}}]`, "unknown source"},
+		"no registries":       {`targets: [{id: a, project: o/r, type: compose, host: h, ssh: "vault:x", dir: /d}]`, "no allowed registries"},
+		"preview lockable":    {`defaults: {registries: [r/]}` + "\n" + `targets: [{id: a, project: o/r, type: helm, cluster: "vault:c", preview: true, lockable: true}]`, "cannot be lockable"},
+		"preview compose":     {`defaults: {registries: [r/]}` + "\n" + `targets: [{id: a, project: o/r, type: compose, host: h, ssh: "vault:x", dir: /d, preview: true}]`, "only supported for helm"},
+		"secret inline":       {`defaults: {registries: [r/]}` + "\n" + `targets: [{id: a, project: o/r, type: compose, host: h, ssh: "-----BEGIN", dir: /d}]`, "vault: reference"},
+		"relative dir":        {`defaults: {registries: [r/]}` + "\n" + `targets: [{id: a, project: o/r, type: compose, host: h, ssh: "vault:x", dir: opt}]`, "absolute"},
+		"helm namespace":      {`defaults: {registries: [r/]}` + "\n" + `targets: [{id: a, project: o/r, type: helm, cluster: "vault:c"}]`, "namespace is required"},
+		"bad source":          {`defaults: {registries: [r/]}` + "\n" + `targets: [{id: a, project: o/r, type: helm, cluster: "vault:c", namespace: n, autoDeploy: {from: [tag]}}]`, "unknown source"},
 		"branches w/o branch": {`defaults: {registries: [r/]}` + "\n" + `targets: [{id: a, project: o/r, type: helm, cluster: "vault:c", namespace: n, autoDeploy: {from: [pr], branches: [main]}}]`, "requires from"},
-		"ansible missing": {`defaults: {registries: [r/]}` + "\n" + `targets: [{id: a, project: o/r, type: ansible}]`, "ansible block"},
-		"bad duration":    {`defaults: {lockDuration: soon}`, "invalid duration"},
-		"bad type":        {`defaults: {registries: [r/]}` + "\n" + `targets: [{id: a, project: o/r, type: k8s}]`, "type must be"},
+		"ansible missing":     {`defaults: {registries: [r/]}` + "\n" + `targets: [{id: a, project: o/r, type: ansible}]`, "ansible block"},
+		"bad duration":        {`defaults: {lockDuration: soon}`, "invalid duration"},
+		"bad type":            {`defaults: {registries: [r/]}` + "\n" + `targets: [{id: a, project: o/r, type: k8s}]`, "type must be"},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
