@@ -219,7 +219,7 @@ func BuildSpec(cfg *config.Config, t config.Target, a *store.Artifact, d *store.
 			Chart: a.RepoConfig.Helm.Chart, Version: a.Manifest.Helm.Version,
 			Values: values, ValuesSecret: vault(t.Values.Vault), Set: set,
 			RegistrySecret: vault(t.RegistryCredentials),
-			Timeout:        cfg.JobTimeout(t).String(),
+			Timeout:        helmTimeout(cfg.JobTimeout(t)).String(),
 		}
 		if t.Preview && a.PR != nil {
 			h.Preview = true
@@ -257,4 +257,13 @@ func BuildSpec(cfg *config.Config, t config.Target, a *store.Artifact, d *store.
 		spec.Ansible = s
 	}
 	return spec, nil
+}
+
+// helmTimeout leaves the executor time to report a helm timeout before
+// Kubernetes kills the job at its deadline.
+func helmTimeout(job time.Duration) time.Duration {
+	if job > 4*time.Minute {
+		return job - 2*time.Minute
+	}
+	return job * 3 / 4
 }

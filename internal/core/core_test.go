@@ -426,6 +426,9 @@ func TestBuildSpec(t *testing.T) {
 		t.Fatal(err)
 	}
 	h := spec.Helm
+	if h.Timeout != "28m0s" || helmTimeout(2*time.Minute) != 90*time.Second {
+		t.Fatalf("helm timeout = %s", h.Timeout)
+	}
 	if h.ClusterSecret != "secret/cd/clusters/test" || h.Namespace != "app" || h.Chart != "oci://ghcr.io/org/charts/app" || h.Version != "1.0.0" {
 		t.Fatalf("helm = %+v", h)
 	}
