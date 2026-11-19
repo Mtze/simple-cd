@@ -13,6 +13,7 @@ import (
 	"github.com/Mtze/simple-cd/internal/config"
 	"github.com/Mtze/simple-cd/internal/core"
 	"github.com/Mtze/simple-cd/internal/github"
+	"github.com/Mtze/simple-cd/internal/registry"
 	"github.com/Mtze/simple-cd/internal/repoconfig"
 	"github.com/Mtze/simple-cd/internal/store"
 )
@@ -183,6 +184,10 @@ func (i *Ingester) checkRegistry(ctx context.Context, a *store.Artifact) {
 	}
 	check := func(repo, ref, what string) {
 		ok, err := i.Registry.Exists(ctx, repo, ref)
+		if errors.Is(err, registry.ErrDenied) {
+			a.Reasons = append(a.Reasons, fmt.Sprintf("%s not found or not accessible: %s@%s", what, repo, ref))
+			return
+		}
 		if err != nil {
 			slog.Warn("registry check failed", "repo", repo, "ref", ref, "err", err)
 			return

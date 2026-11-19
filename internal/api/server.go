@@ -162,7 +162,10 @@ func fail(w http.ResponseWriter, err error) {
 	var nd *core.NotDeployableError
 	var le *core.LockedError
 	var ce *core.ConfirmationError
+	var ru *core.RegistryUnavailableError
 	switch {
+	case errors.As(err, &ru):
+		writeError(w, 502, "registry_unavailable", err.Error())
 	case errors.Is(err, core.ErrNotFound), errors.Is(err, store.ErrNotFound):
 		writeError(w, 404, "not_found", "not found")
 	case errors.Is(err, core.ErrForbidden):

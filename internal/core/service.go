@@ -11,6 +11,7 @@ import (
 
 	"github.com/Mtze/simple-cd/internal/config"
 	"github.com/Mtze/simple-cd/internal/diff"
+	"github.com/Mtze/simple-cd/internal/registry"
 	"github.com/Mtze/simple-cd/internal/repoconfig"
 	"github.com/Mtze/simple-cd/internal/store"
 )
@@ -49,6 +50,28 @@ func (e *ConfirmationError) Error() string { return "configuration changed, conf
 // RegistryChecker checks that an image or chart version exists.
 type RegistryChecker interface {
 	Exists(ctx context.Context, repository, reference string) (bool, error)
+}
+
+// RegistryUnavailableError means the check could not run, e.g. the registry is down.
+type RegistryUnavailableError struct{ Err error }
+
+func (e *RegistryUnavailableError) Error() string { return "registry check failed: " + e.Err.Error() }
+func (e *RegistryUnavailableError) Unwrap() error { return e.Err }
+
+// checkExists treats "access denied" as missing: we cannot prove it exists,
+// so we do not deploy it. Other errors mean the check itself failed.
+func (s *Service) checkExists(ctx context.Context, repo, ref, what string) (string, error) {
+	ok, err := s.Registry.Exists(ctx, repo, ref)
+	if errors.Is(err, registry.ErrDenied) {
+		return fmt.Sprintf("%s not found or not accessible: %s@%s (does the server have registry credentials?)", what, repo, ref), nil
+	}
+	if err != nil {
+		return "", &RegistryUnavailableError{fmt.Errorf("%s: %w", repo, err)}
+	}
+	if !ok {
+		return fmt.Sprintf("%s missing in registry: %s@%s", what, repo, ref), nil
+	}
+	return "", nil
 }
 
 // Notifier reports outcomes back to GitHub. All methods are best effort.
@@ -100,22 +123,22 @@ func (s *Service) RecheckRegistry(ctx context.Context, a *store.Artifact) ([]str
 		if err != nil {
 			continue
 		}
-		ok, err := s.Registry.Exists(ctx, r.Repository, r.Digest)
+		reason, err := s.checkExists(ctx, r.Repository, r.Digest, "image")
 		if err != nil {
-			return nil, fmt.Errorf("registry check for %s: %w", r.Repository, err)
+			return nil, err
 		}
-		if !ok {
-			missing = append(missing, "image missing in registry: "+r.String())
+		if reason != "" {
+			missing = append(missing, reason)
 		}
 	}
 	if rc := a.RepoConfig; rc != nil && rc.Helm != nil && a.Manifest.Helm != nil {
 		repo := repoconfig.ChartRef(rc.Helm.Chart)
-		ok, err := s.Registry.Exists(ctx, repo, a.Manifest.Helm.Version)
+		reason, err := s.checkExists(ctx, repo, a.Manifest.Helm.Version, "chart")
 		if err != nil {
-			return nil, fmt.Errorf("registry check for %s: %w", repo, err)
+			return nil, err
 		}
-		if !ok {
-			missing = append(missing, fmt.Sprintf("chart missing in registry: %s:%s", repo, a.Manifest.Helm.Version))
+		if reason != "" {
+			missing = append(missing, reason)
 		}
 	}
 	if len(missing) > 0 {

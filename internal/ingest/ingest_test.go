@@ -86,7 +86,7 @@ var goodGH = func() *fakeGH {
 	return &fakeGH{
 		manifest: `{"version":1,"images":[{"name":"app","ref":"ghcr.io/org/app@` + digest + `"}],"helm":{"version":"1.0.0"},"autoDeploy":["app-previews"]}`,
 		files: map[string]string{
-			".cd.yaml":                    "helm:\n  chart: oci://ghcr.io/org/charts/app\n  targets:\n    app-previews:\n      values: deploy/values-preview.yaml\n      set: {host: 'pr-{cd.pr}.x'}\n",
+			".cd.yaml":                   "helm:\n  chart: oci://ghcr.io/org/charts/app\n  targets:\n    app-previews:\n      values: deploy/values-preview.yaml\n      set: {host: 'pr-{cd.pr}.x'}\n",
 			"deploy/values-preview.yaml": "replicas: 1\n",
 		},
 	}

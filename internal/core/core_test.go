@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Mtze/simple-cd/internal/config"
+	"github.com/Mtze/simple-cd/internal/registry"
 	"github.com/Mtze/simple-cd/internal/repoconfig"
 	"github.com/Mtze/simple-cd/internal/store"
 	"github.com/Mtze/simple-cd/internal/store/storetest"
@@ -51,9 +52,15 @@ var (
 	composeYML = "services:\n  app:\n    image: ${APP_IMAGE}\n"
 )
 
-type fakeRegistry struct{ missing map[string]bool }
+type fakeRegistry struct{ missing, denied map[string]bool }
 
 func (f fakeRegistry) Exists(_ context.Context, repo, ref string) (bool, error) {
+	if f.denied[repo+"@"+ref] {
+		return false, registry.ErrDenied
+	}
+	if f.missing[repo] {
+		return false, errors.New("connection refused")
+	}
 	return !f.missing[repo+"@"+ref], nil
 }
 
@@ -341,6 +348,19 @@ func TestDeployRechecksRegistry(t *testing.T) {
 	stored, _ := s.Store.Artifact(ctx, a.ID)
 	if len(stored.Reasons) != 1 || !strings.Contains(stored.Reasons[0], "image missing") {
 		t.Fatalf("reasons = %v", stored.Reasons)
+	}
+
+	// Access denied counts as missing, an unreachable registry is an error.
+	b := addArtifact(t, s, "bbb2222", 7, "replicas: 2\n")
+	s.Registry = fakeRegistry{denied: map[string]bool{"ghcr.io/org/charts/app@1.0.0": true}}
+	if _, err := s.Deploy(ctx, alice, DeployRequest{TargetID: "app-test", ArtifactID: b.ID}); !errors.As(err, &nd) || !strings.Contains(nd.Reasons[0], "not accessible") {
+		t.Fatalf("denied: %v", err)
+	}
+	c := addArtifact(t, s, "ccc3333", 7, "replicas: 2\n")
+	s.Registry = fakeRegistry{missing: map[string]bool{"ghcr.io/org/app": true}}
+	var ru *RegistryUnavailableError
+	if _, err := s.Deploy(ctx, alice, DeployRequest{TargetID: "app-test", ArtifactID: c.ID}); !errors.As(err, &ru) {
+		t.Fatalf("unreachable: %v", err)
 	}
 }
 

@@ -3,6 +3,7 @@ package registry
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -52,8 +53,8 @@ func TestExistsWithBearerChallenge(t *testing.T) {
 		t.Fatalf("missing: %v %v", ok, err)
 	}
 	c.Credentials = nil
-	if _, err := c.Exists(context.Background(), host+"/org/app", "sha256:aaa"); err == nil {
-		t.Fatal("expected token error without credentials")
+	if _, err := c.Exists(context.Background(), host+"/org/app", "sha256:aaa"); !errors.Is(err, ErrDenied) {
+		t.Fatalf("without credentials: %v", err)
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -32,6 +33,10 @@ type Checker struct {
 }
 
 type Credential struct{ Username, Password string }
+
+// ErrDenied means the registry refused access. Registries like GHCR answer a
+// missing repository the same way, so the two cannot be told apart.
+var ErrDenied = errors.New("not found or no access")
 
 // LoadDockerConfig reads the "auths" section of a Docker config.json.
 func LoadDockerConfig(path string) (map[string]Credential, error) {
@@ -102,6 +107,8 @@ func (c *Checker) Exists(ctx context.Context, repository, reference string) (boo
 		return true, nil
 	case resp.StatusCode == http.StatusNotFound:
 		return false, nil
+	case resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden:
+		return false, ErrDenied
 	}
 	return false, fmt.Errorf("%s: unexpected %s", repository, resp.Status)
 }
@@ -129,7 +136,7 @@ func (c *Checker) token(ctx context.Context, host, challenge string) (string, er
 	scheme, params := parseChallenge(challenge)
 	if strings.EqualFold(scheme, "basic") {
 		if !hasCred {
-			return "", fmt.Errorf("%s needs credentials", host)
+			return "", ErrDenied
 		}
 		return "Basic " + base64.StdEncoding.EncodeToString([]byte(cred.Username+":"+cred.Password)), nil
 	}
@@ -160,6 +167,9 @@ func (c *Checker) token(ctx context.Context, host, challenge string) (string, er
 		return "", err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		return "", ErrDenied
+	}
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("%s token: %s", host, resp.Status)
 	}
