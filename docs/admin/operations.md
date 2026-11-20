@@ -49,6 +49,9 @@ Deleting an artifact keeps its deployments; they just lose the link to it.
 ## Audit log
 
 Platform admins read it under **Admin > Audit log** or with `GET /api/admin/audit`.
+
+![Admin page with the audit log]({{ '/assets/screenshots/admin.png' | relative_url }})
+
 The actions are listed in [Maintainers: auditability](../maintainers/index.md#auditability).
 For longer retention or a SIEM, export the `audit_events` table from Postgres.
 

@@ -6,6 +6,11 @@ simple-cd sees the artifacts they publish, checks that they are complete, and le
 
 **Documentation: <https://mtze.me/simple-cd/>**
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/screenshots/project-dark.png">
+  <img alt="The project page: target cards with their status, artifacts with readiness per target, and live previews" src="docs/assets/screenshots/project.png">
+</picture>
+
 ## Features
 
 - Helm releases from OCI charts, a single Docker Compose file on a VM, or Ansible playbooks
@@ -19,6 +24,14 @@ simple-cd sees the artifacts they publish, checks that they are complete, and le
 - Keycloak roles per project (developer, maintainer), per target and for platform admins
 - Secrets read from Vault by the executor Job, never by the server
 - Audit log, retention, leader-elected background worker, stateless replicas
+
+## Screenshots
+
+| Deploy with a configuration diff | Live executor log |
+|---|---|
+| ![Deploy dialog showing the Helm values diff and the confirmation checkbox](docs/assets/screenshots/deploy-dialog.png) | ![Deployment page with the log of helm upgrade](docs/assets/screenshots/deployment.png) |
+| **A locked target with its history** | **User menu with roles and theme** |
+| ![Target page showing the lock holder, deployments and lock history](docs/assets/screenshots/target.png) | ![User menu with name, roles, theme switch and logout](docs/assets/screenshots/user-menu.png) |
 
 ## How it works
 

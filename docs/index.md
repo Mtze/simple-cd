@@ -12,6 +12,8 @@ It builds nothing and runs no tests: your GitHub Actions workflow does that.
 simple-cd only delivers.
 It sees the artifacts your workflows publish, checks that they are complete, and lets authorized people deploy them to a target with one click.
 
+![The project page with target cards, artifacts and previews]({{ '/assets/screenshots/project.png' | relative_url }})
+
 ## Features
 
 - **Three target types:** Helm releases on Kubernetes (chart from an OCI registry), a single Docker Compose file on a VM, and Ansible playbooks.

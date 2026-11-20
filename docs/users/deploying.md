@@ -21,7 +21,12 @@ nav_order: 2
 | Admin | `/admin` | audit log and all previews, for platform admins only |
 
 Your role in the project appears as a badge next to the project name.
+
+![Project page: target cards, artifacts with readiness per target, previews]({{ '/assets/screenshots/project.png' | relative_url }})
+
 The user menu at the top right shows your roles, switches between light, dark and system theme and logs you out.
+
+![User menu with name, roles, theme switch and logout]({{ '/assets/screenshots/user-menu.png' | relative_url }})
 
 ## Target status
 
@@ -38,6 +43,8 @@ The first one that applies wins:
 Preview targets never show `deploying`, because every pull request has its own slot.
 
 The card also shows what is deployed (for non-preview targets), who deployed it and when, and links to active deployments.
+
+![Target page of a locked target with its deployments and lock history]({{ '/assets/screenshots/target.png' | relative_url }})
 
 ## Artifacts
 
@@ -71,6 +78,8 @@ It shows:
 - a warning if you lack the permission or the target is in maintenance,
 - the lock situation if someone else holds the lock,
 - the configuration diff, if the configuration changed.
+
+![Deploy dialog with the diff of the Helm values and the confirmation checkbox]({{ '/assets/screenshots/deploy-dialog.png' | relative_url }})
 
 ### Configuration diff and confirmation
 
@@ -148,6 +157,9 @@ An artifact that is the last successful deployment of a target is never deleted.
 
 The deployment page streams the executor output while the deployment runs and updates the status badge live.
 After it finishes, simple-cd stores the log (up to 2 MiB) and shows the stored copy.
+
+![Deployment page with the log of a Helm deploy]({{ '/assets/screenshots/deployment.png' | relative_url }})
+
 Logs are deleted after the log retention period (default 90 days); the deployment record stays.
 
 Deployment statuses:

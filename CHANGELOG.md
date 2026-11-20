@@ -24,4 +24,5 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Helm chart for simple-cd, container images for the server and both executors, CI.
 - Documentation site with UML diagrams.
 - End-to-end test in a kind cluster with Vault, Keycloak, a local registry and a fake GitHub API (`make e2e-up e2e`), run in CI.
+- Screenshots of the UI in the README and the user and admin docs.
 - `SIMPLECD_REGISTRY_PLAIN_HTTP` for registries without TLS in test setups, and `extraEnv` in the Helm chart.
