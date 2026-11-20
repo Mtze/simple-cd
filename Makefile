@@ -2,8 +2,10 @@
 DEV_DB := postgres://simplecd:simplecd@127.0.0.1:5434/simplecd?sslmode=disable
 # Use BASE_URL=http://127.0.0.1:5173 when working with the Vite dev server.
 BASE_URL ?= http://127.0.0.1:8080
+KIND_VERSION := v0.33.0
+KIND := $(CURDIR)/bin/kind
 
-.PHONY: help build web test test-go test-web lint dev-up dev-down dev-seed run
+.PHONY: help build web test test-go test-web lint dev-up dev-down dev-seed run e2e-up e2e e2e-down
 
 help: ## Show this help
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-10s %s\n", $$1, $$2}'
@@ -51,3 +53,15 @@ run: build ## Run the server locally against the development stack
 	SIMPLECD_REGISTRY_CHECK=off \
 	SIMPLECD_EXECUTOR_BINARY=$(CURDIR)/bin/simple-cd-executor \
 	./bin/simple-cd
+
+$(KIND):
+	GOBIN=$(CURDIR)/bin go install sigs.k8s.io/kind@$(KIND_VERSION)
+
+e2e-up: $(KIND) ## Start the end-to-end environment (kind, Vault, Keycloak, simple-cd)
+	KIND=$(KIND) e2e/up.sh
+
+e2e: ## Run the end-to-end test against the environment from e2e-up
+	go test -tags e2e -count=1 -v ./e2e/
+
+e2e-down: $(KIND) ## Delete the end-to-end environment
+	KIND=$(KIND) e2e/down.sh

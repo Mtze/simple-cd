@@ -1,0 +1,4 @@
+apiVersion: v2
+name: demo
+description: Test application for the simple-cd end-to-end test
+version: 1.0.0

@@ -1,0 +1,174 @@
+# Everything simple-cd needs around it in the end-to-end cluster.
+# up.sh replaces E2E_TAG with the tag of the freshly built images.
+apiVersion: v1
+kind: Namespace
+metadata: {name: simple-cd}
+---
+# The namespace the e2e-test target deploys into. simple-cd never creates
+# namespaces for regular targets.
+apiVersion: v1
+kind: Namespace
+metadata: {name: e2e-app}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: postgres, namespace: simple-cd}
+spec:
+  selector:
+    matchLabels: {app: postgres}
+  template:
+    metadata:
+      labels: {app: postgres}
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:18-alpine
+          env:
+            - {name: POSTGRES_USER, value: simplecd}
+            - {name: POSTGRES_PASSWORD, value: simplecd}
+            - {name: POSTGRES_DB, value: simplecd}
+          readinessProbe:
+            exec: {command: [pg_isready, -U, simplecd]}
+            periodSeconds: 2
+---
+apiVersion: v1
+kind: Service
+metadata: {name: postgres, namespace: simple-cd}
+spec:
+  selector: {app: postgres}
+  ports: [{port: 5432}]
+---
+# Vault in dev mode. Its service account reviews the executor's tokens.
+apiVersion: v1
+kind: ServiceAccount
+metadata: {name: vault, namespace: simple-cd}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata: {name: e2e-vault-token-review}
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: system:auth-delegator}
+subjects: [{kind: ServiceAccount, name: vault, namespace: simple-cd}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: vault, namespace: simple-cd}
+spec:
+  selector:
+    matchLabels: {app: vault}
+  template:
+    metadata:
+      labels: {app: vault}
+    spec:
+      serviceAccountName: vault
+      containers:
+        - name: vault
+          image: hashicorp/vault:2.2.2
+          env:
+            - {name: SKIP_SETCAP, value: "true"}
+            - {name: VAULT_DEV_ROOT_TOKEN_ID, value: root}
+            - {name: VAULT_DEV_LISTEN_ADDRESS, value: "0.0.0.0:8200"}
+            # for `kubectl exec ... vault` in up.sh
+            - {name: VAULT_ADDR, value: "http://127.0.0.1:8200"}
+            - {name: VAULT_TOKEN, value: root}
+          readinessProbe:
+            httpGet: {path: /v1/sys/health, port: 8200}
+            periodSeconds: 2
+---
+apiVersion: v1
+kind: Service
+metadata: {name: vault, namespace: simple-cd}
+spec:
+  selector: {app: vault}
+  ports: [{port: 8200}]
+---
+# Keycloak with the development realm. It listens on 18081 inside and outside
+# the cluster, so the issuer URL http://keycloak:18081/realms/simple-cd is the
+# same for simple-cd and for the test on the host.
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: keycloak, namespace: simple-cd}
+spec:
+  selector:
+    matchLabels: {app: keycloak}
+  template:
+    metadata:
+      labels: {app: keycloak}
+    spec:
+      containers:
+        - name: keycloak
+          image: quay.io/keycloak/keycloak:26.4
+          args: [start-dev, --import-realm]
+          env:
+            - {name: KC_BOOTSTRAP_ADMIN_USERNAME, value: admin}
+            - {name: KC_BOOTSTRAP_ADMIN_PASSWORD, value: admin}
+            - {name: KC_HTTP_PORT, value: "18081"}
+          volumeMounts:
+            - {name: realm, mountPath: /opt/keycloak/data/import, readOnly: true}
+          readinessProbe:
+            httpGet: {path: /realms/simple-cd, port: 18081}
+            periodSeconds: 3
+      volumes:
+        - name: realm
+          configMap: {name: keycloak-realm}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: keycloak, namespace: simple-cd}
+spec:
+  type: NodePort
+  selector: {app: keycloak}
+  ports: [{port: 18081, nodePort: 30081}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: fake-github, namespace: simple-cd}
+spec:
+  selector:
+    matchLabels: {app: fake-github}
+  template:
+    metadata:
+      labels: {app: fake-github}
+    spec:
+      containers:
+        - name: fake-github
+          image: kind-registry:5000/fake-github:E2E_TAG
+          readinessProbe:
+            tcpSocket: {port: 8080}
+            periodSeconds: 2
+---
+apiVersion: v1
+kind: Service
+metadata: {name: fake-github, namespace: simple-cd}
+spec:
+  type: NodePort
+  selector: {app: fake-github}
+  ports: [{port: 8080, nodePort: 30082}]
+---
+# Reaches the simple-cd pods from the host on 127.0.0.1:18080.
+apiVersion: v1
+kind: Service
+metadata: {name: simple-cd-e2e, namespace: simple-cd}
+spec:
+  type: NodePort
+  selector: {app.kubernetes.io/name: simple-cd, app.kubernetes.io/instance: simple-cd}
+  ports: [{port: 8080, targetPort: http, nodePort: 30080}]
+---
+# The identity simple-cd deploys with. Its kubeconfig goes into Vault, as it
+# would for a separate target cluster.
+apiVersion: v1
+kind: ServiceAccount
+metadata: {name: e2e-deployer, namespace: default}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: e2e-deployer-token
+  namespace: default
+  annotations: {kubernetes.io/service-account.name: e2e-deployer}
+type: kubernetes.io/service-account-token
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata: {name: e2e-deployer}
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: cluster-admin}
+subjects: [{kind: ServiceAccount, name: e2e-deployer, namespace: default}]

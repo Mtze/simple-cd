@@ -62,3 +62,24 @@ jobs:
       - run: helm template ci deploy/helm/simple-cd --set github.appID=1 --set ingress.enabled=true --set registryAuth=true > /dev/null
       - name: cd-publish action tests
         run: bash cd-publish/test.sh
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: {persist-credentials: false}
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with: {go-version-file: go.mod}
+      - uses: azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e # v5.1.0
+      - name: start kind with Vault, Keycloak and simple-cd
+        run: make e2e-up
+      - run: make e2e
+      - name: diagnostics
+        if: failure()
+        run: |
+          k() { kubectl --context kind-simple-cd-e2e "$@" || true; }
+          k get pods,jobs -A
+          k -n simple-cd logs -l app.kubernetes.io/name=simple-cd --prefix --tail 300
+          k -n simple-cd logs -l app.kubernetes.io/name=simple-cd-executor --prefix --tail 300
+          k -n simple-cd logs deploy/fake-github --tail 100

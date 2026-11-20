@@ -1,0 +1,33 @@
+# The test reads this ConfigMap to see which values reached the release.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: demo
+data:
+  message: {{ .Values.message | quote }}
+  greeting: {{ .Values.greeting | quote }}
+  image: "{{ .Values.image.repository }}@{{ .Values.image.digest }}"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: demo}
+  template:
+    metadata:
+      labels: {app: demo}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: app
+          image: "{{ .Values.image.repository }}@{{ .Values.image.digest }}"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}

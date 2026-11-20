@@ -60,6 +60,47 @@ helm lint deploy/helm/simple-cd --set github.appID=1
 helm template ci deploy/helm/simple-cd --set github.appID=1 --set ingress.enabled=true --set registryAuth=true
 ```
 
+## End-to-end test
+
+The end-to-end test runs a complete installation in a [kind](https://kind.sigs.k8s.io/) cluster and drives it like GitHub and a user would.
+
+```sh
+make e2e-up     # build images, create the cluster, install everything (about 5 minutes the first time)
+make e2e        # go test -tags e2e ./e2e/
+make e2e-down   # delete the cluster and the registry
+```
+
+`make e2e-up` installs kind into `bin/` and needs Docker, `kubectl`, `helm` and `openssl`.
+It is safe to run again after a code change: it rebuilds the images under a new tag and upgrades the release.
+
+What runs where:
+
+| Piece | Where | Reached from the host at |
+|---|---|---|
+| simple-cd, 2 replicas, installed with `deploy/helm/simple-cd` and `e2e/values.yaml` | namespace `simple-cd` | `http://127.0.0.1:18080` |
+| Keycloak with `dev/keycloak-realm.json` | namespace `simple-cd` | `http://127.0.0.1:18081`, issuer `http://keycloak:18081/realms/simple-cd` |
+| fake GitHub API (`e2e/fakegithub`) | namespace `simple-cd` | `http://127.0.0.1:18082` |
+| Vault in dev mode with Kubernetes auth, Postgres | namespace `simple-cd` | |
+| OCI registry (Docker container `kind-registry`) | Docker network `kind`, `kind-registry:5000` | `127.0.0.1:5001` |
+| deployed test app (`e2e/testchart/demo`) | namespace `e2e-app` and preview namespaces `pr-demo-<n>` | |
+
+The kind cluster is both the delivery cluster and the target cluster.
+Its kubeconfig for the target, with the token of a dedicated service account, sits in Vault at `secret/cd/clusters/kind`, as it would for a separate cluster.
+The registry has no TLS, so the server and the executor get `SIMPLECD_REGISTRY_PLAIN_HTTP=kind-registry:5000`.
+
+The test (`e2e/e2e_test.go`) covers:
+
+- `workflow_run` webhooks signed with the webhook secret; simple-cd fetches `deploy.json`, `.cd.yaml` and the values file from the fake GitHub API.
+- the registry check against a real registry: an artifact with a missing image digest is not deployable.
+- the Keycloak login form and the session cookie.
+- a manual deploy through an executor Job: Vault Kubernetes auth, the cluster credentials and values from Vault, `helm upgrade --install` of a chart from the registry, the live log stream; the test checks the values that reached the release.
+- a preview: auto-deploy from a pull request build into a labelled namespace, teardown on `pull_request` closed.
+- the deployment statuses simple-cd reports to GitHub.
+
+Keycloak's issuer must be the same URL for simple-cd and for the test, so the test dials `keycloak:18081` through `127.0.0.1:18081`.
+To use the UI of the end-to-end installation in a browser, add `127.0.0.1 keycloak` to `/etc/hosts` and open `http://127.0.0.1:18080`.
+When a run fails, look at the deployment log in the UI or with `kubectl --context kind-simple-cd-e2e -n simple-cd logs deploy/simple-cd`.
+
 ## Docs
 
 ```sh

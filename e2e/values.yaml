@@ -1,0 +1,43 @@
+# Values for deploy/helm/simple-cd in the end-to-end cluster. up.sh sets the
+# image tags.
+baseURL: http://127.0.0.1:18080
+replicaCount: 2
+
+image:
+  repository: kind-registry:5000/simple-cd
+  pullPolicy: Always
+executor:
+  image: kind-registry:5000/simple-cd-executor
+  ansibleImage: kind-registry:5000/simple-cd-executor
+
+vault:
+  address: http://vault:8200
+oidc:
+  issuer: http://keycloak:18081/realms/simple-cd
+github:
+  appID: "1"
+  apiURL: http://fake-github:8080
+
+extraEnv:
+  - {name: SIMPLECD_REGISTRY_PLAIN_HTTP, value: "kind-registry:5000"}
+
+config:
+  defaults:
+    registries: [kind-registry:5000/e2e/]
+  targets:
+    - id: e2e-test
+      project: example/demo
+      type: helm
+      cluster: vault:secret/cd/clusters/kind
+      namespace: e2e-app
+      values: vault:secret/cd/values/e2e-test
+      jobTimeout: 5m
+    - id: e2e-previews
+      project: example/demo
+      type: helm
+      preview: true
+      autoDeploy:
+        from: [pr]
+      cluster: vault:secret/cd/clusters/kind
+      previewTTL: 1h
+      jobTimeout: 5m

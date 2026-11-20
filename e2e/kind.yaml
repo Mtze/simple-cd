@@ -1,0 +1,10 @@
+# kind cluster for the end-to-end test. It is the delivery cluster and the
+# target cluster at once. Host ports bind to 127.0.0.1 only.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - {containerPort: 30080, hostPort: 18080, listenAddress: 127.0.0.1} # simple-cd
+      - {containerPort: 30081, hostPort: 18081, listenAddress: 127.0.0.1} # Keycloak
+      - {containerPort: 30082, hostPort: 18082, listenAddress: 127.0.0.1} # fake GitHub
