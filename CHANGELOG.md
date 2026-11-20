@@ -24,6 +24,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Helm chart for simple-cd, container images for the server and both executors, CI.
 - Documentation site with UML diagrams.
 - End-to-end test in a kind cluster with Vault, Keycloak, a local registry and a fake GitHub API (`make e2e-up e2e`), run in CI.
+- Docs page "Why simple-cd" with the intended users, reasons, limits and a sourced comparison to Argo CD, Flux, Kargo, Spinnaker, Octopus Deploy, GitHub and GitLab environments, Semaphore UI, Kamal, Coolify and Harness; a short version in the README.
 - Screenshots of the UI in light and dark, in the README and the user and admin docs, taken with `make screenshots`.
 
 ### Changed

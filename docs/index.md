@@ -11,6 +11,7 @@ simple-cd is a small continuous delivery server.
 It builds nothing and runs no tests: your GitHub Actions workflow does that.
 simple-cd only delivers.
 It sees the artifacts your workflows publish, checks that they are complete, and lets authorized people deploy them to a target with one click.
+[Why simple-cd](why.md) explains who it is for and how it compares to Argo CD, Flux, Kargo, Octopus Deploy, GitHub and GitLab environments and others.
 
 ![The project page with target cards, artifacts and previews]({{ '/assets/screenshots/project.png' | relative_url }})
 

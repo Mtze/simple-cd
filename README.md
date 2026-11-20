@@ -25,6 +25,28 @@ simple-cd sees the artifacts they publish, checks that they are complete, and le
 - Secrets read from Vault by the executor Job, never by the server
 - Audit log, retention, leader-elected background worker, stateless replicas
 
+## Who it is for
+
+simple-cd is for teams that build and test in GitHub Actions and need a safe, visible way to put those builds onto shared environments:
+
+- several people share a few test systems and want to deploy *their* build, often from a pull request, and keep it there while they test,
+- the targets are mixed: Helm on Kubernetes, a Compose file on a VM, some Ansible,
+- a platform team defines targets, credentials and rules once, and developers deploy within them without cluster access or SSH keys,
+- Keycloak and Vault are already there.
+
+It is not a GitOps engine, has no canary or blue-green rollouts and no multi-stage promotion with approvals.
+
+| | simple-cd | Argo CD / Flux | Kargo | Octopus Deploy | GitHub / GitLab environments |
+|---|---|---|---|---|---|
+| Model | push on click or rule | GitOps pull | promotion on GitOps | push, releases | push in the pipeline |
+| Targets | Helm, Compose over SSH, Ansible | Kubernetes | Kubernetes | Kubernetes, SSH, Windows, cloud | anything a runner reaches |
+| Pick any build in a UI | yes | rollback to history (Argo CD) | yes | yes | re-run or re-deploy |
+| Previews per PR | yes | yes (ApplicationSet, Flux Operator) | no | yes | scripted / review apps |
+| Reserve a test system | ad hoc locks | scheduled sync windows / suspend | windows (Enterprise) | freezes | queueing only |
+| License | MIT | Apache-2.0 | Apache-2.0 | commercial, free tier | part of GitHub / GitLab |
+
+The [detailed comparison](https://mtze.me/simple-cd/why.html) covers these and Spinnaker, Semaphore UI, Kamal, Coolify and Harness, with sources.
+
 ## Screenshots
 
 The UI follows the system theme; GitHub shows the screenshots in the theme you use.
