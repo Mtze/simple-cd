@@ -1,5 +1,7 @@
 # Common tasks. Run `make help` for a list.
 DEV_DB := postgres://simplecd:simplecd@127.0.0.1:5434/simplecd?sslmode=disable
+# Use BASE_URL=http://127.0.0.1:5173 when working with the Vite dev server.
+BASE_URL ?= http://127.0.0.1:8080
 
 .PHONY: help build web test test-go test-web lint dev-up dev-down dev-seed run
 
@@ -37,7 +39,7 @@ dev-seed: ## Fill the development database with demo data
 run: build ## Run the server locally against the development stack
 	SIMPLECD_CONFIG=dev/config.yaml \
 	SIMPLECD_DATABASE_URL='$(DEV_DB)' \
-	SIMPLECD_BASE_URL=http://127.0.0.1:8080 \
+	SIMPLECD_BASE_URL=$(BASE_URL) \
 	SIMPLECD_LISTEN=127.0.0.1:8080 \
 	SIMPLECD_OIDC_ISSUER=http://127.0.0.1:8081/realms/simple-cd \
 	SIMPLECD_OIDC_CLIENT_ID=simple-cd \

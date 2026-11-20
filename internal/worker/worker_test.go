@@ -189,6 +189,54 @@ func TestPreviewTeardown(t *testing.T) {
 	}
 }
 
+func TestPreviewTeardownGivesUpAfterRepeatedFailures(t *testing.T) {
+	w, r, _, now := setup(t)
+	a := artifact(t, w, 3)
+	w.Core.AutoDeploy(ctx, a)
+	w.Tick(ctx)
+	for name := range r.started {
+		r.states[name] = runner.State{Done: true, Succeeded: true}
+	}
+	w.Tick(ctx)
+	w.Core.PRClosed(ctx, "org/app", 3)
+	// Every teardown fails; keep ticking well past the point where the worker should give up.
+	for i := 0; i < 20; i++ {
+		w.Tick(ctx)
+		for name, j := range r.started {
+			if j.Spec.Kind == store.KindTeardown && !r.states[name].Done {
+				r.states[name] = runner.State{Done: true, Message: "namespace exists and is not managed by simple-cd"}
+			}
+		}
+		*now = now.Add(teardownRetry + time.Minute)
+	}
+	w.Tick(ctx)
+	teardowns := 0
+	for _, j := range r.started {
+		if j.Spec.Kind == store.KindTeardown {
+			teardowns++
+		}
+	}
+	if teardowns != maxTeardownAttempts {
+		t.Fatalf("teardown attempts = %d", teardowns)
+	}
+	active, _ := w.Store.ActiveDeployments(ctx, "app-previews")
+	if len(active) != 0 {
+		t.Fatalf("teardown retried after giving up: %+v", active)
+	}
+	p, err := w.Store.LivePreview(ctx, "app-previews", 3)
+	if err != nil || p.Status != store.PreviewActive || p.ExpiresAt.Before(time.Now().Add(24*time.Hour)) {
+		t.Fatalf("preview = %+v, %v", p, err)
+	}
+	events, _ := w.Store.AuditEvents(ctx, 0, 100)
+	found := false
+	for _, e := range events {
+		found = found || e.Action == "preview.teardown_abandoned"
+	}
+	if !found {
+		t.Fatal("no audit event for the abandoned teardown")
+	}
+}
+
 func TestPendingForRemovedTargetFails(t *testing.T) {
 	w, _, _, _ := setup(t)
 	a := artifact(t, w, 3)

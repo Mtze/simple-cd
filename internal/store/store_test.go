@@ -50,6 +50,23 @@ func TestUpsertArtifactNewestRunWins(t *testing.T) {
 	}
 }
 
+func TestBranchRunKeepsPullRequestProvenance(t *testing.T) {
+	s := storetest.New(t)
+	s.UpsertArtifact(ctx, artifact("aaa", 10, "ci"))
+	branch := artifact("aaa", 11, "ci")
+	branch.Source, branch.RefName, branch.PR = "branch", "feature", nil
+	got, applied, err := s.UpsertArtifact(ctx, branch)
+	if err != nil || !applied || got.Source != "pr" || got.PR == nil || *got.PR != 7 || got.RunID != 11 {
+		t.Fatalf("got %+v applied=%v err=%v", got, applied, err)
+	}
+	release := artifact("aaa", 12, "release")
+	release.Source, release.RefName, release.PR = "release", "v1.0.0", nil
+	got, _, _ = s.UpsertArtifact(ctx, release)
+	if got.Source != "release" || got.RefName != "v1.0.0" {
+		t.Fatalf("release run did not win: %+v", got)
+	}
+}
+
 func TestDeploymentSlots(t *testing.T) {
 	s := storetest.New(t)
 	a, _, _ := s.UpsertArtifact(ctx, artifact("aaa", 1, "ci"))

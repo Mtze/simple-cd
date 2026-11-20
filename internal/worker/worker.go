@@ -24,9 +24,11 @@ const (
 	leaderLockID = 7_341_002_002
 	maxLogBytes  = 2 << 20
 	// Kubernetes enforces the job timeout; this grace covers a stuck API or node.
-	timeoutGrace   = 2 * time.Minute
-	teardownRetry  = 10 * time.Minute
-	retentionEvery = 10 * time.Minute
+	timeoutGrace  = 2 * time.Minute
+	teardownRetry = 10 * time.Minute
+	// After this many failed teardowns of one preview the worker stops retrying.
+	maxTeardownAttempts = 3
+	retentionEvery      = 10 * time.Minute
 )
 
 // Reporter mirrors deployments to GitHub. Optional.
@@ -236,7 +238,10 @@ func (w *Worker) finish(ctx context.Context, d *store.Deployment, cfg *config.Co
 	if w.Reporter == nil {
 		return
 	}
-	t, _ := w.Config.Get().Target(d.TargetID)
+	t, ok := w.Config.Get().Target(d.TargetID)
+	if !ok {
+		return // the target and with it the project are gone from the config
+	}
 	if d.Kind == store.KindDeploy && d.GitHubDeploymentID != nil {
 		state := map[string]string{store.StatusSucceeded: "success", store.StatusFailed: "failure", store.StatusTimedOut: "error"}[status]
 		w.Reporter.Finished(ctx, t.Project, d, *d.GitHubDeploymentID, state, strings.TrimSpace("Deployment "+status+" "+msg))
@@ -262,7 +267,16 @@ func (w *Worker) previewBookkeeping(ctx context.Context, cfg *config.Config, d *
 	case d.Kind == store.KindTeardown && status == store.StatusSucceeded:
 		w.Store.SetPreviewStatus(ctx, p.ID, store.PreviewDeleted)
 	case d.Kind == store.KindTeardown:
-		// Try again later instead of leaving the namespace behind.
+		// Retry a few times (the cluster may be briefly unreachable), then stop
+		// and leave it to a person: a foreign namespace never becomes ours.
+		failed, err := w.Store.FailedTeardowns(ctx, d.TargetID, d.Slot, p.CreatedAt)
+		if err == nil && failed >= maxTeardownAttempts {
+			w.Store.ExpirePreview(ctx, p.ID, w.now().Add(100*365*24*time.Hour))
+			w.Store.Audit(ctx, core.SystemActor, "preview.teardown_abandoned", d.TargetID, map[string]any{
+				"pr": pr, "namespace": p.Namespace, "attempts": failed, "lastDeployment": d.ID,
+			})
+			return
+		}
 		w.Store.ExpirePreview(ctx, p.ID, w.now().Add(teardownRetry))
 	case status == store.StatusSucceeded && p.Status == store.PreviewActive:
 		w.Store.TouchPreview(ctx, p.Repo, pr, t.ID, p.Namespace, w.now().Add(cfg.PreviewTTL(t)))

@@ -47,7 +47,11 @@ func (s *Store) UpsertArtifact(ctx context.Context, a *Artifact) (*Artifact, boo
 			manifest, repo_config, files, reasons)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
 		ON CONFLICT (repo, sha) DO UPDATE SET
-			source = EXCLUDED.source, ref_name = EXCLUDED.ref_name, pr = EXCLUDED.pr,
+			-- A push run for a commit that is also in a PR must not hide the PR:
+			-- previews only accept PR artifacts.
+			source = CASE WHEN artifacts.source = 'pr' AND EXCLUDED.source = 'branch' THEN 'pr' ELSE EXCLUDED.source END,
+			ref_name = CASE WHEN artifacts.source = 'pr' AND EXCLUDED.source = 'branch' THEN artifacts.ref_name ELSE EXCLUDED.ref_name END,
+			pr = COALESCE(EXCLUDED.pr, artifacts.pr),
 			run_id = EXCLUDED.run_id, run_url = EXCLUDED.run_url, workflow = EXCLUDED.workflow,
 			triggering_actor = EXCLUDED.triggering_actor,
 			other_workflows = artifacts.other_workflows OR artifacts.workflow <> EXCLUDED.workflow,

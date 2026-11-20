@@ -57,8 +57,10 @@ export function PreviewTable({ previews, onChanged, admin }: { previews: Preview
   if (previews.length === 0) return <p className="muted">No live previews.</p>;
 
   const teardown = async (p: Preview) => {
-    const what = p.orphaned ? 'Delete the orphaned preview' : 'Tear down the preview';
-    if (!window.confirm(`${what} for PR #${p.pr} (${p.namespace})? The namespace and everything in it will be deleted.`)) return;
+    const question = p.orphaned
+      ? `Forget the orphaned preview for PR #${p.pr}? Its target is gone from the configuration, so simple-cd cannot reach the cluster: delete the namespace ${p.namespace} by hand.`
+      : `Tear down the preview for PR #${p.pr} (${p.namespace})? The namespace and everything in it will be deleted.`;
+    if (!window.confirm(question)) return;
     setBusy(p.id);
     setError(null);
     try {

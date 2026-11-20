@@ -193,3 +193,11 @@ func (s *Store) CurrentDeployments(ctx context.Context) (map[string]*Deployment,
 func (s *Store) AllActive(ctx context.Context) ([]*Deployment, error) {
 	return s.listDeployments(ctx, `status IN ('pending','running') ORDER BY created_at`)
 }
+
+// FailedTeardowns counts failed teardowns in a slot since t.
+func (s *Store) FailedTeardowns(ctx context.Context, target, slot string, since time.Time) (int, error) {
+	var n int
+	err := s.db.QueryRow(ctx, `SELECT count(*) FROM deployments WHERE target_id = $1 AND slot = $2
+		AND kind = 'teardown' AND status IN ('failed','timed_out') AND created_at >= $3`, target, slot, since).Scan(&n)
+	return n, err
+}

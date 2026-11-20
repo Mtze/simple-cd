@@ -195,6 +195,18 @@ func (c *Config) Validate() error {
 	var errs []error
 	add := func(format string, a ...any) { errs = append(errs, fmt.Errorf(format, a...)) }
 
+	d := c.Defaults
+	for name, v := range map[string]Duration{
+		"lockDuration": d.LockDuration, "jobTimeout": d.JobTimeout, "previewTTL": d.PreviewTTL,
+		"logRetention": d.LogRetention, "auditRetention": d.AuditRetention, "artifactRetention": d.ArtifactRetention,
+	} {
+		if v <= 0 {
+			add("defaults.%s must be positive", name)
+		}
+	}
+	if d.KeepBranchArtifacts < 0 {
+		add("defaults.keepBranchArtifacts must not be negative")
+	}
 	for p := range c.Projects {
 		if !projectPattern.MatchString(p) {
 			add("project %q: must be owner/repo", p)
@@ -292,6 +304,9 @@ func (c *Config) Validate() error {
 			}
 			if a.Source != "repo" && a.Playbook == "" {
 				add("%s: ansible.playbook is required for an external source", where)
+			}
+			if a.Source != "repo" && a.Ref == "" {
+				add("%s: ansible.ref is required for an external source", where)
 			}
 			if a.Inventory == "" {
 				add("%s: ansible.inventory is required", where)

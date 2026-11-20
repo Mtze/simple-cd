@@ -112,6 +112,8 @@ targets:
 		"branches w/o branch": {`defaults: {registries: [r/]}` + "\n" + `targets: [{id: a, project: o/r, type: helm, cluster: "vault:c", namespace: n, autoDeploy: {from: [pr], branches: [main]}}]`, "requires from"},
 		"ansible missing":     {`defaults: {registries: [r/]}` + "\n" + `targets: [{id: a, project: o/r, type: ansible}]`, "ansible block"},
 		"bad duration":        {`defaults: {lockDuration: soon}`, "invalid duration"},
+		"ansible no ref":      {`defaults: {registries: [r/]}` + "\n" + `targets: [{id: a, project: o/r, type: ansible, ansible: {source: "git@x:y.git", playbook: p.yml, inventory: i, credentials: "vault:c"}}]`, "ansible.ref is required"},
+		"negative default":    {`defaults: {registries: [r/], jobTimeout: -1m}`, "defaults.jobTimeout must be positive"},
 		"bad type":            {`defaults: {registries: [r/]}` + "\n" + `targets: [{id: a, project: o/r, type: k8s}]`, "type must be"},
 	}
 	for name, tc := range cases {
