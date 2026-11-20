@@ -581,7 +581,9 @@ svg { flex-shrink: 0; vertical-align: -0.15em; }
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 16px;
 }
-.target-card { display: grid; gap: 12px; align-content: start; }
+.target-card { display: flex; flex-direction: column; gap: 12px; }
+/* Cards in one row share their height; the buttons line up at the bottom. */
+.target-card > .actions { margin-top: auto; }
 .target-head {
   display: flex;
   align-items: center;
