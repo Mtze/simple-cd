@@ -77,3 +77,34 @@ func TestLoadDockerConfig(t *testing.T) {
 		t.Fatalf("%v", c)
 	}
 }
+
+func TestRedirectToOtherHostNotFollowed(t *testing.T) {
+	hits := 0
+	internal := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { hits++ }))
+	defer internal.Close()
+	reg := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, internal.URL+"/secret", http.StatusFound)
+	}))
+	defer reg.Close()
+	host := strings.TrimPrefix(reg.URL, "http://")
+	c := &Checker{PlainHTTP: map[string]bool{host: true}}
+	if _, err := c.Exists(context.Background(), host+"/org/app", "sha256:aaa"); err == nil {
+		t.Fatal("redirect to another host accepted")
+	}
+	if hits != 0 {
+		t.Fatalf("internal host received %d requests", hits)
+	}
+}
+
+func TestTokenRealmMustBeHTTPS(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("WWW-Authenticate", `Bearer realm="http://127.0.0.1:1/token"`)
+		w.WriteHeader(401)
+	}))
+	defer srv.Close()
+	c := &Checker{HTTP: srv.Client()}
+	_, err := c.Exists(context.Background(), strings.TrimPrefix(srv.URL, "https://")+"/org/app", "sha256:aaa")
+	if err == nil || !strings.Contains(err.Error(), "not https") {
+		t.Fatalf("http realm: %v", err)
+	}
+}

@@ -101,7 +101,13 @@ func newFake(t *testing.T) (*fakeGitHub, *App) {
 			"content": base64.StdEncoding.EncodeToString([]byte("a: 1\n"))})
 	}))
 	mux.HandleFunc("GET /repos/org/app/git/ref/tags/v1.0", auth(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{}`))
+		w.Write([]byte(`{"object":{"sha":"c1","type":"commit"}}`))
+	}))
+	mux.HandleFunc("GET /repos/org/app/git/ref/tags/v2.0", auth(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"object":{"sha":"t2","type":"tag"}}`))
+	}))
+	mux.HandleFunc("GET /repos/org/app/git/tags/t2", auth(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"object":{"sha":"c2","type":"commit"}}`))
 	}))
 	mux.HandleFunc("GET /repos/org/app/commits/abc/pulls", auth(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`[{"number":3,"state":"closed"},{"number":4,"state":"open"}]`))
@@ -162,11 +168,14 @@ func TestClient(t *testing.T) {
 		t.Fatalf("missing ref: %v", err)
 	}
 
-	if ok, err := c.IsTag(ctx, "org/app", "v1.0"); !ok || err != nil {
-		t.Fatalf("IsTag v1.0: %v %v", ok, err)
+	if sha, err := c.TagCommit(ctx, "org/app", "v1.0"); sha != "c1" || err != nil {
+		t.Fatalf("TagCommit v1.0: %v %v", sha, err)
 	}
-	if ok, err := c.IsTag(ctx, "org/app", "main"); ok || err != nil {
-		t.Fatalf("IsTag main: %v %v", ok, err)
+	if sha, err := c.TagCommit(ctx, "org/app", "v2.0"); sha != "c2" || err != nil {
+		t.Fatalf("TagCommit annotated v2.0: %v %v", sha, err)
+	}
+	if _, err := c.TagCommit(ctx, "org/app", "main"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("TagCommit main: %v", err)
 	}
 	prs, err := c.PullRequestsForCommit(ctx, "org/app", "abc")
 	if err != nil || len(prs) != 1 || prs[0] != 4 {

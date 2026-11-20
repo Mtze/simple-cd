@@ -14,10 +14,10 @@ They can do everything a developer can, and they keep the project's targets in o
 
 ## Permissions
 
-Everyone who can log in sees every project, target, artifact and deployment.
-Changing anything needs a role.
+Logging in needs at least one client role of simple-cd; a `viewer` role is enough to see every project, target, artifact and deployment.
+Changing anything needs a project or platform role.
 
-| Action | Logged in, no role | Developer | Maintainer | Platform admin |
+| Action | Viewer | Developer | Maintainer | Platform admin |
 |---|:-:|:-:|:-:|:-:|
 | See projects, targets, artifacts, logs | yes | yes | yes | yes |
 | Deploy to an `available` target | - | yes ¹ | yes ¹ | yes |

@@ -39,8 +39,9 @@ compose:
 		"helm: {chart: https://x}",
 		"compose: {path: ../../etc/passwd}",
 		"compose: {path: /etc/passwd}",
-		"helm: {chart: oci://x, targets: {a: {values: ../x}}}",
-		"helm: {chart: oci://x, typo: 1}",
+		"helm: {chart: oci://ghcr.io/org/c, targets: {a: {values: ../x}}}",
+		"helm: {chart: oci://ghcr.io/org/c, typo: 1}",
+		"helm: {chart: oci://ghcr.io/org/../evil/c}",
 	} {
 		if _, err := ParseRepoConfig([]byte(bad)); err == nil {
 			t.Errorf("accepted %q", bad)
@@ -82,6 +83,11 @@ func TestParseImageRef(t *testing.T) {
 	}
 	if r.String() != "localhost:5000/team/app@"+digest {
 		t.Errorf("String = %s", r.String())
+	}
+	for _, bad := range []string{"ghcr.io/org/../evil/app", "ghcr.io/org//app", "ghcr.io/Org/app", "ghcr.io/org/app/"} {
+		if _, err := ParseImageRef(bad + "@" + digest); err == nil {
+			t.Errorf("%s: accepted", bad)
+		}
 	}
 }
 
@@ -149,6 +155,9 @@ func TestEnvVarAndAllowed(t *testing.T) {
 	}
 	if !AllowedBy("ghcr.io/org/app", []string{"docker.io/", "ghcr.io/org/"}) || AllowedBy("ghcr.io/evil/app", []string{"ghcr.io/org/"}) {
 		t.Error("AllowedBy wrong")
+	}
+	if !AllowedBy("ghcr.io/org/app", []string{"ghcr.io/org"}) || AllowedBy("ghcr.io/org-evil/app", []string{"ghcr.io/org"}) {
+		t.Error("AllowedBy matches inside a path component")
 	}
 	if ChartRef("oci://ghcr.io/org/charts/app") != "ghcr.io/org/charts/app" {
 		t.Error("ChartRef wrong")

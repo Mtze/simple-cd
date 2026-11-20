@@ -23,7 +23,7 @@ type RepoAPI interface {
 	DownloadArtifactFile(ctx context.Context, repo string, runID int64, artifact, file string) ([]byte, error)
 	File(ctx context.Context, repo, path, ref string) ([]byte, error)
 	PullRequestsForCommit(ctx context.Context, repo, sha string) ([]int, error)
-	IsTag(ctx context.Context, repo, name string) (bool, error)
+	TagCommit(ctx context.Context, repo, name string) (string, error)
 }
 
 type Ingester struct {
@@ -114,11 +114,12 @@ func (i *Ingester) source(ctx context.Context, gh RepoAPI, ev github.WorkflowRun
 	default:
 		a.Source = config.SourceBranch
 		if run.HeadBranch != "" {
-			tag, err := gh.IsTag(ctx, a.Repo, run.HeadBranch)
-			if err != nil {
+			// A branch may share its name with a tag, so the tag must point at the built commit.
+			commit, err := gh.TagCommit(ctx, a.Repo, run.HeadBranch)
+			if err != nil && !errors.Is(err, github.ErrNotFound) {
 				return fmt.Errorf("check tag: %w", err)
 			}
-			if tag {
+			if err == nil && commit == a.SHA {
 				a.Source = config.SourceRelease
 			}
 		}
@@ -178,11 +179,17 @@ func (i *Ingester) snapshot(ctx context.Context, gh RepoAPI, a *store.Artifact) 
 
 // checkRegistry records missing images and charts. A registry that is down
 // does not mark the artifact incomplete; the check before deploy catches it.
+// Only allowed registries are asked, so deploy.json cannot make the server
+// call arbitrary hosts; readiness reports the others.
 func (i *Ingester) checkRegistry(ctx context.Context, a *store.Artifact) {
 	if i.Registry == nil {
 		return
 	}
+	prefixes := i.Config.Get().Registries(a.Repo)
 	check := func(repo, ref, what string) {
+		if !repoconfig.AllowedBy(repo, prefixes) {
+			return
+		}
 		ok, err := i.Registry.Exists(ctx, repo, ref)
 		if errors.Is(err, registry.ErrDenied) {
 			a.Reasons = append(a.Reasons, fmt.Sprintf("%s not found or not accessible: %s@%s", what, repo, ref))

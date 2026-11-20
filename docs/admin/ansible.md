@@ -25,6 +25,16 @@ Paths must be relative and stay inside the checkout.
 For `source: repo` and SSH URLs, the key in `ansible.credentials` must be able to read the repository, for example as a read-only deploy key, and `known_hosts` must contain the Git host.
 HTTPS URLs work only for public repositories; the executor sends no credentials for HTTPS.
 
+### Which source to choose
+
+A playbook is code, and it runs inside the executor Job, next to the Vault login.
+All executor Jobs share one Vault role, so a playbook can read every deployment secret below `secret/cd/`, including kubeconfigs and SSH keys of other projects.
+
+- **External Git source (recommended):** keep the playbooks in a separate repository that only operators can push to, and pin `ansible.ref`. Developers of the application cannot change what runs.
+- **`source: repo`:** the playbook comes from the application repository at the deployed commit. Use it only when you trust everyone who can push to that repository and get a commit deployed to the target with all deployment secrets.
+
+A project can mix both: one target with an external source for shared or production systems, another with `source: repo` for a sandbox.
+
 ## What a deployment does
 
 1. Read `private_key`, `known_hosts` and `user` from the Vault secret in `ansible.credentials`.

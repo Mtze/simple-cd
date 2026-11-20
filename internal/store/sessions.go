@@ -44,36 +44,8 @@ func (s *Store) DeleteSession(ctx context.Context, idHash string) error {
 	return err
 }
 
-type AuthRequest struct {
-	State     string    `db:"state"`
-	Verifier  string    `db:"verifier"`
-	Nonce     string    `db:"nonce"`
-	ReturnTo  string    `db:"return_to"`
-	ExpiresAt time.Time `db:"expires_at"`
-}
-
-func (s *Store) CreateAuthRequest(ctx context.Context, r AuthRequest) error {
-	_, err := s.db.Exec(ctx, `INSERT INTO auth_requests (state, verifier, nonce, return_to, expires_at) VALUES ($1,$2,$3,$4,$5)`,
-		r.State, r.Verifier, r.Nonce, r.ReturnTo, r.ExpiresAt)
-	return err
-}
-
-// TakeAuthRequest returns and deletes a pending login, so a state is usable once.
-func (s *Store) TakeAuthRequest(ctx context.Context, state string) (*AuthRequest, error) {
-	rows, err := s.db.Query(ctx, `DELETE FROM auth_requests WHERE state = $1 AND expires_at > now()
-		RETURNING state, verifier, nonce, return_to, expires_at`, state)
-	if err != nil {
-		return nil, err
-	}
-	r, err := pgx.CollectExactlyOneRow(rows, pgx.RowToAddrOfStructByName[AuthRequest])
-	return r, notFound(err)
-}
-
-// DeleteExpiredAuth removes expired sessions and login attempts.
+// DeleteExpiredAuth removes expired sessions.
 func (s *Store) DeleteExpiredAuth(ctx context.Context) error {
-	if _, err := s.db.Exec(ctx, `DELETE FROM sessions WHERE expires_at < now()`); err != nil {
-		return err
-	}
-	_, err := s.db.Exec(ctx, `DELETE FROM auth_requests WHERE expires_at < now()`)
+	_, err := s.db.Exec(ctx, `DELETE FROM sessions WHERE expires_at < now()`)
 	return err
 }

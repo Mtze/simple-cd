@@ -41,7 +41,7 @@ The worker applies retention every 10 minutes:
 | Release artifacts | `keepBranchArtifacts` (50) | the newest 50 per project are kept |
 | Deployment logs | `logRetention` (90d) | the log text of deployments that finished this long ago is removed; the deployment record stays |
 | Audit events | `auditRetention` (365d) | deleted |
-| Sessions and pending logins | session TTL | expired ones are deleted |
+| Sessions | session TTL | expired ones are deleted |
 
 An artifact that is the last successful deployment of a target or slot, or that a pending or running deployment uses, is never deleted.
 Deleting an artifact keeps its deployments; they just lose the link to it.

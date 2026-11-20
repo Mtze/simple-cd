@@ -166,7 +166,7 @@ func serve() error {
 		}
 	}
 
-	run, err := newRunner()
+	run, err := newRunner(baseURL)
 	if err != nil {
 		return err
 	}
@@ -218,7 +218,7 @@ func executorEnv() map[string]string {
 	return out
 }
 
-func newRunner() (runner.Runner, error) {
+func newRunner(baseURL string) (runner.Runner, error) {
 	switch mode := env("SIMPLECD_RUNNER", "kubernetes"); mode {
 	case "kubernetes":
 		k, err := runner.InCluster()
@@ -237,6 +237,10 @@ func newRunner() (runner.Runner, error) {
 		}
 		return k, nil
 	case "process":
+		// The process runner hands the server's own secrets to every deploy.
+		if strings.HasPrefix(baseURL, "https://") {
+			return nil, errors.New("the process runner is for local development only and refuses an https SIMPLECD_BASE_URL")
+		}
 		slog.Warn("using the process runner: for local development only")
 		e := executorEnv()
 		if t := os.Getenv("VAULT_TOKEN"); t != "" {

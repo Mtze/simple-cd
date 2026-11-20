@@ -35,11 +35,15 @@ For private repositories, also switch off **Allow forking** in the organization.
 
 The repository, commit, source (`pr`, `branch`, `release`) and pull request number come from the webhook payload and the GitHub API, never from `deploy.json`.
 A workflow cannot claim to be a release or another pull request.
+A push counts as a release only when a tag of that name points at the commit that was built, so a branch named like an existing tag stays a branch.
 
 ### Registry prefixes
 
 Every image and the chart must be under an allowed registry prefix of the project (`registries`).
 A compromised workflow cannot point a target at an arbitrary image.
+Prefixes match whole path components, and repository names must follow the OCI grammar (lowercase, no `..`), so `ghcr.io/example/../evil/app` is rejected.
+The existence check only contacts registries on the allowlist, so `deploy.json` cannot make the server call other hosts.
+It follows redirects only within the same host and scheme and fetches tokens only from `https` realms.
 
 ### Digest pinning
 
@@ -65,11 +69,14 @@ Auto-deploys need a request from the repository and a matching rule on the targe
 
 ## Sessions and browser
 
-- Login uses the authorization code flow with PKCE (`S256`), a one-time `state` that expires after 10 minutes and a `nonce`.
-- The `return` target after login only accepts local paths, so the login cannot redirect elsewhere.
+- Login uses the authorization code flow with PKCE (`S256`), a one-time `state` and a `nonce`.
+  They live in a login cookie (`HttpOnly`, 10 minutes) of the browser that started the login, so a callback URL from someone else's login is refused and anonymous login requests store nothing on the server.
+- Only users with at least one client role of simple-cd may log in, see [Keycloak](keycloak.md#roles). The names `system`, `auto-deploy` and `github` are reserved for the server's own audit entries and refused at login.
+- The `return` target after login only accepts local paths, so the login cannot redirect elsewhere. Control characters and backslashes are refused.
 - Sessions live in Postgres, stored under the SHA-256 hash of the cookie value; a database leak does not reveal usable cookies. They expire after `SIMPLECD_SESSION_TTL` (default 4 hours).
 - The session cookie is `HttpOnly`, `SameSite=Lax` and, with an `https://` base URL, `Secure` with the `__Host-` prefix.
 - Logout deletes the session and ends the Keycloak session (RP-initiated logout).
+- Log streams normalize carriage returns, so log output cannot forge stream events.
 - **CSRF:** every `POST`, `PUT` and `DELETE` needs the header `X-Requested-With: simple-cd`, which browsers cannot send cross-site without CORS (simple-cd never allows CORS), and a present `Origin` header must match the base URL.
 - **Security headers:** a strict Content Security Policy (`default-src 'self'`, no inline scripts, `frame-ancestors 'none'`, `object-src 'none'`, `base-uri 'none'`, `form-action 'self'`), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: same-origin`, `Cross-Origin-Opener-Policy: same-origin`, a restrictive `Permissions-Policy`, and HSTS with an `https://` base URL.
 - API responses carry `Cache-Control: no-store`.
@@ -103,6 +110,9 @@ The server's own service account may only manage Jobs and read pods and logs in 
 ## Known limits
 
 - One Vault role for all executor Jobs: every Job can read every secret below `secret/cd/`.
+  With Ansible `source: repo` the playbook comes from the application repository and runs inside that Job, so everyone who can get a commit deployed to such a target can read all deployment secrets. Use an external Git source that only operators can push to unless you trust all developers of the project that far, see [Ansible](ansible.md#playbook-source).
+- Roles are read at login and stay valid until the session expires (`SIMPLECD_SESSION_TTL`, default 4 hours). To lock someone out at once, remove the role in Keycloak and delete their sessions: `DELETE FROM sessions WHERE username = '<name>';`.
 - Webhook processing happens in memory after the `202` answer; a crash in between loses the event until it is redelivered.
 - Locks coordinate people; they are not an access control.
-- `SIMPLECD_REGISTRY_CHECK=off`, `SIMPLECD_REGISTRY_PLAIN_HTTP` and `SIMPLECD_RUNNER=process` are for local development and tests only.
+- `SIMPLECD_REGISTRY_CHECK=off`, `SIMPLECD_REGISTRY_PLAIN_HTTP` and `SIMPLECD_RUNNER=process` are for local development and tests only. The process runner refuses to start with an `https://` base URL.
+- The log stream of a pending deployment polls the database once per second per open stream, without a limit per user.

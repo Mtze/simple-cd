@@ -44,4 +44,4 @@ Everything else is runtime state in Postgres:
 | `Session` | `sessions` | login sessions, keyed by the SHA-256 of the cookie value |
 
 The links between runtime state and targets are plain target ids, not foreign keys: the configuration lives in a file, and history survives when a target is removed.
-Not shown: `auth_requests` (pending logins, valid for 10 minutes) and `schema_migrations`.
+Not shown: `schema_migrations`. Pending logins are not stored; they live in a short-lived cookie.

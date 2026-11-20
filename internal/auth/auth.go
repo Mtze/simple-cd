@@ -16,6 +16,8 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"path"
+	"slices"
 	"strings"
 	"time"
 
@@ -42,6 +44,7 @@ type Auth struct {
 	endURL    string
 	secure    bool
 	cookieKey string
+	loginKey  string
 }
 
 // New discovers the provider. It fails fast when Keycloak is unreachable,
@@ -61,9 +64,10 @@ func New(ctx context.Context, cfg Config, s *store.Store) (*Auth, error) {
 		cfg.SessionTTL = 4 * time.Hour
 	}
 	secure := strings.HasPrefix(cfg.BaseURL, "https://")
-	name := "simplecd_session"
+	name, login := "simplecd_session", "simplecd_login"
 	if secure {
-		name = "__Host-simplecd_session" // only sent over https, host-only, path /
+		// only sent over https, host-only, path /
+		name, login = "__Host-"+name, "__Host-"+login
 	}
 	return &Auth{
 		cfg: cfg, store: s, provider: provider,
@@ -73,7 +77,7 @@ func New(ctx context.Context, cfg Config, s *store.Store) (*Auth, error) {
 			RedirectURL: strings.TrimSuffix(cfg.BaseURL, "/") + "/auth/callback",
 			Scopes:      []string{oidc.ScopeOpenID, "profile", "email"},
 		},
-		endURL: meta.EndSession, secure: secure, cookieKey: name,
+		endURL: meta.EndSession, secure: secure, cookieKey: name, loginKey: login,
 	}, nil
 }
 
@@ -91,28 +95,69 @@ func hashID(id string) string {
 }
 
 // safeReturn only allows local paths, so the login cannot redirect elsewhere.
+// Parsing rejects control characters such as a tab, which browsers drop
+// ("/\t/evil" becomes "//evil"); a backslash counts as a slash in browsers.
 func safeReturn(p string) string {
-	if !strings.HasPrefix(p, "/") || strings.HasPrefix(p, "//") || strings.HasPrefix(p, "/\\") || strings.HasPrefix(p, "/auth/") {
+	u, err := url.Parse(p)
+	if err != nil || u.Scheme != "" || u.Host != "" || u.Opaque != "" || !strings.HasPrefix(u.Path, "/") ||
+		strings.Contains(p, "\\") || strings.HasPrefix(path.Clean(u.Path)+"/", "/auth/") {
 		return "/"
 	}
-	return p
+	u.Path, u.RawPath, u.Fragment = path.Clean(u.Path), "", ""
+	return u.RequestURI()
+}
+
+// loginState lives in a short-lived cookie between Login and Callback, so
+// only the browser that started a login can finish it, and anonymous login
+// requests store nothing on the server.
+type loginState struct {
+	State    string `json:"s"`
+	Verifier string `json:"v"`
+	Nonce    string `json:"n"`
+	Return   string `json:"r"`
 }
 
 // Login starts the authorization code flow with PKCE.
 func (a *Auth) Login(w http.ResponseWriter, r *http.Request) {
-	state, nonce, verifier := randomString(24), randomString(24), oauth2.GenerateVerifier()
-	err := a.store.CreateAuthRequest(r.Context(), store.AuthRequest{
-		State: state, Verifier: verifier, Nonce: nonce,
-		ReturnTo: safeReturn(r.URL.Query().Get("return")), ExpiresAt: time.Now().Add(10 * time.Minute),
-	})
-	if err != nil {
-		slog.Error("create auth request", "err", err)
-		http.Error(w, "login failed", http.StatusInternalServerError)
-		return
-	}
-	url := a.oauth.AuthCodeURL(state, oauth2.S256ChallengeOption(verifier), oidc.Nonce(nonce))
+	ls := loginState{State: randomString(24), Verifier: oauth2.GenerateVerifier(), Nonce: randomString(24),
+		Return: safeReturn(r.URL.Query().Get("return"))}
+	raw, _ := json.Marshal(ls)
+	c := a.cookie(base64.RawURLEncoding.EncodeToString(raw), 600)
+	c.Name = a.loginCookieName(ls.State)
+	http.SetCookie(w, c)
+	url := a.oauth.AuthCodeURL(ls.State, oauth2.S256ChallengeOption(ls.Verifier), oidc.Nonce(ls.Nonce))
 	http.Redirect(w, r, url, http.StatusFound)
 }
+
+// loginCookieName is unique per login, so logins in several tabs at once do
+// not overwrite each other.
+func (a *Auth) loginCookieName(state string) string {
+	return a.loginKey + "-" + state[:min(len(state), 12)]
+}
+
+// takeLoginState reads and clears the login cookie; it must match the state
+// Keycloak sent back.
+func (a *Auth) takeLoginState(w http.ResponseWriter, r *http.Request) (loginState, bool) {
+	var ls loginState
+	state := r.URL.Query().Get("state")
+	c, err := r.Cookie(a.loginCookieName(state))
+	if state == "" || err != nil {
+		return ls, false
+	}
+	clear := a.cookie("", -1)
+	clear.Name = c.Name
+	http.SetCookie(w, clear)
+	raw, err := base64.RawURLEncoding.DecodeString(c.Value)
+	if err != nil || json.Unmarshal(raw, &ls) != nil || ls.State != state {
+		return ls, false
+	}
+	ls.Return = safeReturn(ls.Return)
+	return ls, true
+}
+
+// reservedNames are the actors the server records for its own actions; a
+// person with such a name would be indistinguishable in the audit log.
+var reservedNames = []string{core.SystemActor, core.AutoDeployActor, "github"}
 
 // Callback finishes the login and creates the session.
 func (a *Auth) Callback(w http.ResponseWriter, r *http.Request) {
@@ -122,8 +167,8 @@ func (a *Auth) Callback(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "login failed: "+e, http.StatusUnauthorized)
 		return
 	}
-	req, err := a.store.TakeAuthRequest(ctx, q.Get("state"))
-	if err != nil {
+	req, ok := a.takeLoginState(w, r)
+	if !ok {
 		http.Error(w, "login expired, please try again", http.StatusBadRequest)
 		return
 	}
@@ -146,6 +191,11 @@ func (a *Auth) Callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	user := claims.User(a.cfg.ClientID)
+	if len(user.Roles) == 0 || slices.Contains(reservedNames, user.Username) {
+		slog.Info("login refused", "user", user.Username, "roles", len(user.Roles))
+		http.Error(w, "your account has no access to simple-cd, ask an administrator for a role", http.StatusForbidden)
+		return
+	}
 	id := randomString(32)
 	err = a.store.CreateSession(ctx, store.Session{
 		IDHash: hashID(id), Subject: idTok.Subject, Username: user.Username, Name: user.Name, Email: user.Email,
@@ -158,7 +208,7 @@ func (a *Auth) Callback(w http.ResponseWriter, r *http.Request) {
 	}
 	a.store.Audit(ctx, user.Username, "auth.login", "", map[string]any{"roles": user.Roles})
 	http.SetCookie(w, a.cookie(id, int(a.cfg.SessionTTL.Seconds())))
-	http.Redirect(w, r, req.ReturnTo, http.StatusFound)
+	http.Redirect(w, r, req.Return, http.StatusFound)
 }
 
 func (a *Auth) cookie(value string, maxAge int) *http.Cookie {

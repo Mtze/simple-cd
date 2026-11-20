@@ -74,8 +74,8 @@ func ParseRepoConfig(data []byte) (*RepoConfig, error) {
 	}
 	var errs []error
 	if h := c.Helm; h != nil {
-		if !strings.HasPrefix(h.Chart, "oci://") {
-			errs = append(errs, errors.New("helm.chart must be an oci:// reference"))
+		if !strings.HasPrefix(h.Chart, "oci://") || !repositoryPattern.MatchString(ChartRef(h.Chart)) {
+			errs = append(errs, errors.New("helm.chart must be an oci:// reference to a valid repository"))
 		}
 		for id, t := range h.Targets {
 			if t.Values != "" && !safeRepoPath(t.Values) {
@@ -178,6 +178,10 @@ func (r ImageRef) Path() string { _, p, _ := strings.Cut(r.Repository, "/"); ret
 
 var digestPattern = regexp.MustCompile(`^sha256:[a-f0-9]{64}$`)
 
+// repositoryPattern is a registry host plus lowercase path components, as in
+// the OCI distribution spec. It keeps "../" out of the allowlist check.
+var repositoryPattern = regexp.MustCompile(`^[a-zA-Z0-9.-]+(:[0-9]+)?(/[a-z0-9]+((\.|_|__|-+)[a-z0-9]+)*)+$`)
+
 // ParseImageRef requires a digest: tags can move, digests cannot.
 func ParseImageRef(s string) (ImageRef, error) {
 	name, digest, ok := strings.Cut(s, "@")
@@ -193,6 +197,9 @@ func ParseImageRef(s string) (ImageRef, error) {
 	if !hasPath || !(strings.ContainsAny(host, ".:") || host == "localhost") {
 		return ImageRef{}, fmt.Errorf("%q must include the registry host", s)
 	}
+	if !repositoryPattern.MatchString(name) {
+		return ImageRef{}, fmt.Errorf("%q is not a valid image repository", s)
+	}
 	return ImageRef{Repository: name, Tag: tag, Digest: digest}, nil
 }
 
@@ -207,10 +214,13 @@ func ChartRef(chart string) (repository string) {
 	return strings.TrimPrefix(chart, "oci://")
 }
 
-// AllowedBy reports whether a repository (host/path) is under one of the prefixes.
+// AllowedBy reports whether a repository (host/path) is one of the prefixes
+// or lies below one. Prefixes match whole path components, so
+// "ghcr.io/example" does not allow "ghcr.io/example-evil/app".
 func AllowedBy(repository string, prefixes []string) bool {
 	for _, p := range prefixes {
-		if strings.HasPrefix(repository, p) {
+		p = strings.TrimSuffix(p, "/")
+		if repository == p || strings.HasPrefix(repository, p+"/") {
 			return true
 		}
 	}

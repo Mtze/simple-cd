@@ -48,7 +48,7 @@ The Keycloak realm `simple-cd` from `dev/keycloak-realm.json` has five users, al
 | `bob` | `project:example/demo:developer` | a second developer, blocked by alice's lock |
 | `mia` | `project:example/demo:maintainer`, `deploy:demo-prod` | lock takeover, maintenance, the extra target role |
 | `root` | `platform-admin` | the admin page, audit log, orphaned previews |
-| `guest` | none | the read-only view |
+| `guest` | `viewer` | the read-only view |
 
 The Keycloak admin console runs at <http://127.0.0.1:8081> with `admin` / `admin`.
 

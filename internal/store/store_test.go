@@ -163,19 +163,12 @@ func TestDeleteOldArtifactsKeepsDeployed(t *testing.T) {
 	}
 }
 
-func TestSessionsAndAuthRequests(t *testing.T) {
+func TestSessionsAndAudit(t *testing.T) {
 	s := storetest.New(t)
 	s.CreateSession(ctx, store.Session{IDHash: "h", Subject: "s", Username: "alice", Roles: []string{"platform-admin"}, ExpiresAt: time.Now().Add(time.Hour)})
 	got, err := s.Session(ctx, "h")
 	if err != nil || got.Roles[0] != "platform-admin" {
 		t.Fatal(err)
-	}
-	s.CreateAuthRequest(ctx, store.AuthRequest{State: "st", Verifier: "v", Nonce: "n", ExpiresAt: time.Now().Add(time.Minute)})
-	if _, err := s.TakeAuthRequest(ctx, "st"); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := s.TakeAuthRequest(ctx, "st"); !errors.Is(err, store.ErrNotFound) {
-		t.Fatal("auth request usable twice")
 	}
 	s.Audit(ctx, "alice", "deploy", "t", map[string]any{"artifact": 1})
 	ev, _ := s.AuditEvents(ctx, 0, 10)

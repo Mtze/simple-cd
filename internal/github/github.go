@@ -348,13 +348,27 @@ func (c *Client) PullRequestsForCommit(ctx context.Context, repo, sha string) ([
 	return out, nil
 }
 
-// IsTag reports whether name is a tag in the repository.
-func (c *Client) IsTag(ctx context.Context, repo, name string) (bool, error) {
-	err := c.do(ctx, http.MethodGet, fmt.Sprintf("/repos/%s/git/ref/tags/%s", repo, escapePath(name)), nil, nil)
-	if errors.Is(err, ErrNotFound) {
-		return false, nil
+// TagCommit returns the commit a tag points to, or ErrNotFound when there is
+// no such tag. Annotated tags are peeled to their commit.
+func (c *Client) TagCommit(ctx context.Context, repo, name string) (string, error) {
+	var ref struct {
+		Object struct {
+			SHA  string `json:"sha"`
+			Type string `json:"type"`
+		} `json:"object"`
 	}
-	return err == nil, err
+	if err := c.do(ctx, http.MethodGet, fmt.Sprintf("/repos/%s/git/ref/tags/%s", repo, escapePath(name)), nil, &ref); err != nil {
+		return "", err
+	}
+	for i := 0; ref.Object.Type == "tag" && i < 5; i++ {
+		if err := c.do(ctx, http.MethodGet, fmt.Sprintf("/repos/%s/git/tags/%s", repo, url.PathEscape(ref.Object.SHA)), nil, &ref); err != nil {
+			return "", err
+		}
+	}
+	if ref.Object.Type != "commit" {
+		return "", fmt.Errorf("tag %s points to a %s", name, ref.Object.Type)
+	}
+	return ref.Object.SHA, nil
 }
 
 type DeploymentRequest struct {

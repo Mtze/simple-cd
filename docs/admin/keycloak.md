@@ -43,16 +43,20 @@ All roles are **client roles of the simple-cd client**:
 | `project:<owner>/<repo>:maintainer` | everything a developer can, plus take over locks and switch maintenance |
 | any role named in a target's `role`, by convention `deploy:<target-id>` | needed in addition to the project role for that target |
 | `platform-admin` | everything in every project, the audit log, orphaned previews and the config error banner |
+| `viewer` (by convention) | read access only: any client role lets a user log in and see every project |
 
 Write `<owner>/<repo>` in **lower case**.
 simple-cd lowercases the project name before it compares, because GitHub names are case-insensitive.
 A role `project:Example/App:developer` never matches.
 
 The full list of what each role can do is the [permission matrix](../maintainers/index.md#permissions).
-Users without any role can still log in and see everything read-only.
+Users without any client role of simple-cd cannot log in: they get "your account has no access".
+Give people who should only watch a role such as `viewer`, which grants nothing beyond logging in.
+The usernames `system`, `auto-deploy` and `github` are refused, because the audit log uses them for the server's own actions.
 
 Assign roles to groups rather than to single users where you can.
 simple-cd stores the roles in the session at login, so role changes apply at the next login (sessions last 4 hours by default).
+To take access away at once, remove the role and delete the user's sessions in Postgres: `DELETE FROM sessions WHERE username = '<name>';`.
 
 ## Protocol mapper (required)
 

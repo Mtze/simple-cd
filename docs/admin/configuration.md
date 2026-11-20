@@ -116,7 +116,7 @@ List a project when it needs its own registries, or to show it in the UI before 
 | `registries` | `defaults.registries` | allowed registry prefixes for this project's images and charts |
 
 Registry prefixes are plain string prefixes of `host/path`.
-End them with `/` (`ghcr.io/example/`), otherwise `ghcr.io/example` also matches `ghcr.io/example-evil/...`.
+Prefixes match whole path components: `ghcr.io/example` and `ghcr.io/example/` both allow `ghcr.io/example/app`, but not `ghcr.io/example-evil/app`.
 
 Validation: the key must match `owner/repo` (letters, digits, `_`, `.`, `-`).
 GitHub names are case-insensitive; simple-cd matches repositories case-insensitively and uses the spelling from this file.

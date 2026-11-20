@@ -473,14 +473,18 @@ func (s *Server) deploymentLog(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("X-Accel-Buffering", "no")
+	// SSE also ends a line at a lone "\r", so log output could forge events.
+	lines := func(text string) []string {
+		return strings.Split(strings.NewReplacer("\r\n", "\n", "\r", "\n").Replace(text), "\n")
+	}
 	send := func(event, data string) {
-		for _, line := range strings.Split(data, "\n") {
+		for _, line := range lines(data) {
 			fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event, line)
 		}
 		flusher.Flush()
 	}
 	sendLog := func(text string) {
-		for _, line := range strings.Split(strings.TrimSuffix(text, "\n"), "\n") {
+		for _, line := range lines(strings.TrimSuffix(text, "\n")) {
 			fmt.Fprintf(w, "event: log\ndata: %s\n\n", line)
 		}
 		flusher.Flush()

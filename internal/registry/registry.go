@@ -74,7 +74,16 @@ func (c *Checker) client() *http.Client {
 	if c.HTTP != nil {
 		return c.HTTP
 	}
-	return &http.Client{Timeout: 20 * time.Second}
+	return &http.Client{Timeout: 20 * time.Second, CheckRedirect: c.sameHost}
+}
+
+// sameHost stops redirects that leave the registry host or downgrade to http,
+// so a registry cannot point the server at internal addresses.
+func (c *Checker) sameHost(req *http.Request, via []*http.Request) error {
+	if len(via) >= 5 || req.URL.Host != via[0].URL.Host || req.URL.Scheme != via[0].URL.Scheme {
+		return http.ErrUseLastResponse
+	}
+	return nil
 }
 
 // Exists reports whether repository (host/path) has the reference (digest or tag).
@@ -151,6 +160,9 @@ func (c *Checker) token(ctx context.Context, host, challenge string) (string, er
 		q.Set("scope", s)
 	}
 	realm := params["realm"]
+	if u, err := url.Parse(realm); err != nil || !(u.Scheme == "https" || u.Scheme == "http" && c.PlainHTTP[host]) {
+		return "", fmt.Errorf("%s: token realm %q is not https", host, realm)
+	}
 	sep := "?"
 	if strings.Contains(realm, "?") {
 		sep = "&"

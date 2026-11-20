@@ -59,6 +59,9 @@
         },
         {
           "name": "project:example/tools:developer"
+        },
+        {
+          "name": "viewer"
         }
       ]
     }
@@ -160,7 +163,7 @@
         }
       ],
       "clientRoles": {
-        "simple-cd": []
+        "simple-cd": ["viewer"]
       }
     }
   ]

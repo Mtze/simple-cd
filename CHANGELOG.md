@@ -33,3 +33,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Light theme: darker page background, stronger borders and card shadows, and a framed readiness list per artifact, so cards and the targets of an artifact read as groups.
 - Target cards in one row keep their buttons on one line at the bottom, whatever the card shows above them.
 - `SIMPLECD_REGISTRY_PLAIN_HTTP` for registries without TLS in test setups, and `extraEnv` in the Helm chart.
+
+### Security
+
+Fixes from the security audit of 2026-11-20.
+
+- A push counts as a release only when the tag of that name points at the built commit; before, a branch named like an existing tag was stored as a release and could auto-deploy to release targets.
+- The registry existence check only contacts registries on the project's allowlist, follows redirects only within the same host and scheme and fetches tokens only from `https` realms; before, `deploy.json` could make the server send requests to any host.
+- Image and chart repositories must follow the OCI name grammar (no `..`), and registry prefixes match whole path components, so `ghcr.io/example` no longer allows `ghcr.io/example-evil/`.
+- The `return` target after login refuses control characters and backslashes, which browsers turned into a redirect to another site.
+- **Breaking:** login state (`state`, PKCE verifier, nonce) moved from the `auth_requests` table into a 10-minute login cookie, so only the browser that started a login can finish it and anonymous login requests store nothing. Migration `002` drops the table; logins started before the upgrade must be retried.
+- **Breaking:** users without any client role of simple-cd can no longer log in; give read-only users a role such as `viewer` (the dev realm gives one to `guest`). The usernames `system`, `auto-deploy` and `github` are refused.
+- Log streams normalize carriage returns, so log output cannot forge `status` or `end` events.
+- The process runner refuses to start with an `https://` base URL.
+- `go-jose` 4.1.6 (three advisories, not reachable from simple-cd).
+- Docs: Ansible `source: repo` runs repository code with access to all deployment secrets, and how to end a user's sessions at once.

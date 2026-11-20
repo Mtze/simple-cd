@@ -26,7 +26,7 @@ Repository permissions:
 | Permission | Access | Used for |
 |---|---|---|
 | Actions | Read-only | list workflow run artifacts and download `cd-deploy` |
-| Contents | Read-only | read `.cd.yaml`, values files, the Compose file and the playbook at a commit; check whether a ref is a tag |
+| Contents | Read-only | read `.cd.yaml`, values files, the Compose file and the playbook at a commit; check whether a tag points at the built commit |
 | Deployments | Read and write | show deployments on commits and pull requests |
 | Pull requests | Read-only | find the pull request of a commit |
 | Metadata | Read-only | mandatory for every App |

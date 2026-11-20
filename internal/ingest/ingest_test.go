@@ -20,7 +20,7 @@ var ctx = context.Background()
 type fakeGH struct {
 	manifest string
 	files    map[string]string
-	tags     map[string]bool
+	tags     map[string]string // tag name -> commit
 	prs      []int
 }
 
@@ -43,7 +43,12 @@ func (f *fakeGH) PullRequestsForCommit(context.Context, string, string) ([]int, 
 	return f.prs, nil
 }
 
-func (f *fakeGH) IsTag(_ context.Context, _, name string) (bool, error) { return f.tags[name], nil }
+func (f *fakeGH) TagCommit(_ context.Context, _, name string) (string, error) {
+	if sha, ok := f.tags[name]; ok {
+		return sha, nil
+	}
+	return "", github.ErrNotFound
+}
 
 type fakeRegistry map[string]bool
 
@@ -138,12 +143,22 @@ func TestForkRejected(t *testing.T) {
 
 func TestSourceDetection(t *testing.T) {
 	gh := goodGH()
-	gh.tags = map[string]bool{"v1.2.0": true}
+	gh.tags = map[string]string{"v1.2.0": "abc1234"}
 	i := setup(t, gh, nil)
 	i.WorkflowRun(ctx, event(t, run("push", "v1.2.0", "org/app", "")))
 	a, _ := i.Store.ArtifactBySHA(ctx, "Org/App", "abc1234")
 	if a.Source != "release" || a.RefName != "v1.2.0" {
 		t.Fatalf("tag push: %+v", a)
+	}
+
+	// A branch named like an existing tag, on another commit, stays a branch.
+	gh = goodGH()
+	gh.tags = map[string]string{"v1.2.0": "fedcba9"}
+	i = setup(t, gh, nil)
+	i.WorkflowRun(ctx, event(t, run("push", "v1.2.0", "org/app", "")))
+	a, _ = i.Store.ArtifactBySHA(ctx, "Org/App", "abc1234")
+	if a.Source != "branch" {
+		t.Fatalf("branch named like a tag: %+v", a)
 	}
 
 	i = setup(t, goodGH(), nil)
@@ -176,6 +191,17 @@ func TestIncompleteArtifacts(t *testing.T) {
 	a, _ = i.Store.ArtifactBySHA(ctx, "Org/App", "abc1234")
 	if len(a.Reasons) != 1 || !strings.Contains(a.Reasons[0], "digest") {
 		t.Fatalf("reasons = %v", a.Reasons)
+	}
+}
+
+func TestRegistryCheckSkipsHostsOutsideAllowlist(t *testing.T) {
+	gh := goodGH()
+	gh.manifest = `{"version":1,"images":[{"name":"app","ref":"internal.example/x@` + digest + `"}],"helm":{"version":"1.0.0"}}`
+	i := setup(t, gh, fakeRegistry{"internal.example/x@" + digest: true})
+	i.WorkflowRun(ctx, event(t, run("push", "main", "org/app", "")))
+	a, _ := i.Store.ArtifactBySHA(ctx, "Org/App", "abc1234")
+	if len(a.Reasons) != 0 {
+		t.Fatalf("registry outside the allowlist was asked: %v", a.Reasons)
 	}
 }
 

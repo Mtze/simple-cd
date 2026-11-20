@@ -250,14 +250,15 @@ func TestAdminOnly(t *testing.T) {
 func TestLogStreamForFinishedDeployment(t *testing.T) {
 	e := setup(t)
 	d, _ := e.s.Store.InsertDeployment(ctx, &store.Deployment{ArtifactID: &e.a.ID, TargetID: "app-test", Actor: "alice"})
-	e.s.Store.Finish(ctx, d.ID, store.StatusFailed, "==> helm\nboom\n", "exit 1")
+	// A lone \r in the log must not start an SSE field such as "event: status".
+	e.s.Store.Finish(ctx, d.ID, store.StatusFailed, "==> helm\nboom\revent: status\n", "exit 1")
 	req, _ := http.NewRequest("GET", e.srv.URL+"/api/deployments/"+itoa(d.ID)+"/log", nil)
 	b, _ := json.Marshal(dev)
 	req.Header.Set("X-Test-User", string(b))
 	resp, _ := http.DefaultClient.Do(req)
 	raw, _ := io.ReadAll(resp.Body)
 	resp.Body.Close()
-	want := "event: status\ndata: failed\n\nevent: log\ndata: ==> helm\n\nevent: log\ndata: boom\n\nevent: log\ndata: error: exit 1\n\nevent: status\ndata: failed\n\nevent: end\ndata: \n\n"
+	want := "event: status\ndata: failed\n\nevent: log\ndata: ==> helm\n\nevent: log\ndata: boom\n\nevent: log\ndata: event: status\n\nevent: log\ndata: error: exit 1\n\nevent: status\ndata: failed\n\nevent: end\ndata: \n\n"
 	if resp.Header.Get("Content-Type") != "text/event-stream" || string(raw) != want {
 		t.Fatalf("stream = %q", raw)
 	}
