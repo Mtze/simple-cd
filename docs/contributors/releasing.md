@@ -21,7 +21,7 @@ Tags:
 | Trigger | Tags |
 |---|---|
 | push to `main` | `edge`, `sha-<short sha>` |
-| tag `v1.2.3` | `1.2.3`, `1.2`, `sha-<short sha>` |
+| tag `v1.2.3` | `1.2.3`, `1.2`, `latest`, `sha-<short sha>` |
 
 ## Cutting a release
 

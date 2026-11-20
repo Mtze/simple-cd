@@ -23,7 +23,7 @@ Background: `docs/contributors/releasing.md`.
    git push origin vX.Y.Z
    ```
 
-8. **Images.** The tag triggers `.github/workflows/images.yml`, which pushes `X.Y.Z`, `X.Y` and `sha-<sha>` for `ghcr.io/mtze/simple-cd`, `simple-cd-executor` and `simple-cd-executor-ansible`. Wait for it and check the tags exist:
+8. **Images.** The tag triggers `.github/workflows/images.yml`, which pushes `X.Y.Z`, `X.Y`, `latest` and `sha-<sha>` for `ghcr.io/mtze/simple-cd`, `simple-cd-executor` and `simple-cd-executor-ansible`. Wait for it and check the tags exist:
 
    ```sh
    gh api /users/Mtze/packages/container/simple-cd/versions --jq '.[0].metadata.container.tags'
