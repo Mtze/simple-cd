@@ -130,7 +130,7 @@ type: kubernetes.io/service-account-token
 
 The label check protects foreign namespaces from simple-cd's own teardown, but it is no access control.
 
-The preview cluster also provides what previews need around them: wildcard DNS (for example `*.app.preview.example.org`), an ingress controller with a wildcard certificate, and quotas or LimitRanges.
+The preview cluster also provides what previews need around them: wildcard DNS (for example `*.app.preview.example.org`), a Gateway (or ingress controller) with a wildcard certificate, and quotas or LimitRanges.
 simple-cd manages none of this.
 
 ## Build the kubeconfig

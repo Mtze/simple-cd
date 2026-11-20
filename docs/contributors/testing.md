@@ -57,7 +57,7 @@ The script feeds valid and invalid inputs to `publish.sh` and compares the gener
 
 ```sh
 helm lint deploy/helm/simple-cd --set github.appID=1
-helm template ci deploy/helm/simple-cd --set github.appID=1 --set ingress.enabled=true --set registryAuth=true
+helm template ci deploy/helm/simple-cd --set github.appID=1 --set httpRoute.enabled=true --set 'httpRoute.parentRefs[0].name=public' --set registryAuth=true
 ```
 
 ## End-to-end test

@@ -12,7 +12,7 @@ nav_order: 1
 
 ## Prerequisites
 
-- A Kubernetes cluster for simple-cd itself, with an ingress controller and TLS.
+- A Kubernetes cluster for simple-cd itself, with a [Gateway API](https://gateway-api.sigs.k8s.io/) implementation and a Gateway that terminates TLS. The chart attaches simple-cd to that Gateway with an HTTPRoute.
 - A PostgreSQL database and a user that may create tables. simple-cd runs its migrations at start.
 - The [Keycloak client](keycloak.md), the [GitHub App](github-app.md) and the [Vault setup](vault.md).
 - Network access from the simple-cd pods to Postgres, Keycloak, the GitHub API, your OCI registries and the Kubernetes API, and from the executor pods to Vault, the target clusters and the target VMs.
@@ -83,7 +83,7 @@ The chart lives in the repository at `deploy/helm/simple-cd`.
 | `registryAuth` | `false` | mount `registry-auth` from the Secret |
 | `config` | one default registry, no targets | the [target configuration](configuration.md), rendered into a ConfigMap |
 | `service.type`, `service.port` | `ClusterIP`, `80` | Service |
-| `ingress.enabled`, `className`, `annotations`, `host`, `tls.secretName` | `false`, `""`, `{}`, `cd.example.org`, `""` | Ingress |
+| `httpRoute.enabled`, `parentRefs`, `hostnames`, `annotations` | `false`, `[]`, `[cd.example.org]`, `{}` | HTTPRoute (`gateway.networking.k8s.io/v1`); `parentRefs` names your Gateway and is required when enabled |
 | `extraEnv` | `[]` | additional environment variables for the server, see the [environment reference](../reference/environment.md) |
 | `resources` | requests 50m CPU, 64Mi; limit 256Mi | server pod resources |
 | `podAnnotations`, `nodeSelector`, `tolerations`, `affinity` | empty | scheduling |
@@ -98,12 +98,11 @@ oidc:
   issuer: https://keycloak.example.org/realms/main
 vault:
   address: https://vault.example.org
-ingress:
+httpRoute:
   enabled: true
-  className: nginx
-  host: cd.example.org
-  tls:
-    secretName: cd-example-org-tls
+  parentRefs:
+    - {name: public, namespace: gateway-system, sectionName: https}
+  hostnames: [cd.example.org]
 config:
   defaults:
     registries: [ghcr.io/example/]
@@ -134,9 +133,34 @@ Pin `image.tag` and `executor.tag` to a release (for example `0.1.0`) instead of
 | ConfigMap `<release>-config` | `config.yaml` from `values.config`, mounted at `/config` |
 | ServiceAccount `<release>` and a Role | the server may create, get, list and delete Jobs and read pods and pod logs, in its own namespace only |
 | ServiceAccount `simple-cd-executor` | identity of the executor Jobs for the Vault login. It has no Kubernetes permissions. |
-| Service, optional Ingress | HTTP on port 8080 behind the Service |
+| Service, optional HTTPRoute | HTTP on port 8080 behind the Service; the route sends all paths of the host names to it |
 
 Executor Jobs run in the release namespace.
+
+### Gateway
+
+The chart creates no Gateway; the platform usually runs a shared one.
+The listener the route attaches to must allow routes from the release namespace (`allowedRoutes.namespaces`), and TLS terminates there:
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata: {name: public, namespace: gateway-system}
+spec:
+  gatewayClassName: <your implementation>
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: cd.example.org
+      tls:
+        certificateRefs: [{name: cd-example-org-tls}]
+      allowedRoutes:
+        namespaces: {from: All}
+```
+
+The deployment log in the UI is a Server-Sent Events stream that stays open while a deployment runs.
+If your Gateway implementation limits request duration or idle time, allow at least the longest job timeout of your targets.
 
 ## Check the installation
 

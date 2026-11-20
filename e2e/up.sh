@@ -47,6 +47,8 @@ helm package e2e/testchart/demo -d "$TMP" >/dev/null
 helm push "$TMP/demo-1.0.0.tgz" "oci://$PUSH/e2e/charts" --plain-http
 
 step "Infrastructure"
+# Gateway API CRDs, so the API server validates the chart's HTTPRoute. No Gateway controller runs here.
+k apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.7.0/standard-install.yaml >/dev/null
 sed "s/E2E_TAG/$TAG/g" e2e/manifests.yaml | k apply -f -
 k -n simple-cd create configmap keycloak-realm --from-file=realm.json=dev/keycloak-realm.json \
   --dry-run=client -o yaml | k apply -f -

@@ -1,6 +1,6 @@
 ---
 title: Architecture decisions
-nav_order: 9
+nav_order: 10
 has_children: true
 ---
 
@@ -21,5 +21,6 @@ The [design record](../design.md) (German) holds the discussion that led to them
 | [0007](0007-slots-locks-and-waiting-place.md) | Deploy slots, opt-in locks and a waiting place for auto-deploys | Accepted |
 | [0008](0008-digests-and-registry-allowlist.md) | Images pinned by digest, registries on an allowlist | Accepted |
 | [0009](0009-hand-placed-structural-diagrams.md) | Hand-placed draw.io diagrams for structural views | Accepted |
+| [0010](0010-gateway-api-httproute.md) | Gateway API HTTPRoute instead of Ingress | Accepted |
 
 New records use the next number and the same sections: Status, Date, Context, Decision, Consequences.

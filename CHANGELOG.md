@@ -28,6 +28,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- **Breaking:** the Helm chart exposes simple-cd with a Gateway API `HTTPRoute` (`httpRoute.*`) instead of an `Ingress`; the `ingress.*` values are gone. The end-to-end test installs the Gateway API CRDs and validates the route.
 - Light theme: darker page background, stronger borders and card shadows, and a framed readiness list per artifact, so cards and the targets of an artifact read as groups.
 - Target cards in one row keep their buttons on one line at the bottom, whatever the card shows above them.
 - `SIMPLECD_REGISTRY_PLAIN_HTTP` for registries without TLS in test setups, and `extraEnv` in the Helm chart.

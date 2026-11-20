@@ -18,6 +18,13 @@ github:
   appID: "1"
   apiURL: http://fake-github:8080
 
+# The route is validated against the Gateway API CRDs; the test reaches the
+# server through a NodePort, since no Gateway controller runs in kind.
+httpRoute:
+  enabled: true
+  parentRefs: [{name: e2e, namespace: simple-cd}]
+  hostnames: [simple-cd.e2e.test]
+
 extraEnv:
   - {name: SIMPLECD_REGISTRY_PLAIN_HTTP, value: "kind-registry:5000"}
 

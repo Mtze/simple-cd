@@ -247,7 +247,7 @@ def deployment():
     cluster = node(d, 440, 300, 780, 600, "executionEnvironment", "Delivery Cluster", "Kubernetes 1.37")
     group(d, 460, 390, 740, 270, "<b>namespace simple-cd</b> · Helm chart simple-cd")
     app = node(d, 480, 430, 330, 210, "pod", "simple-cd",
-               "Go 1.27 · distroless · :8080<br/>replicas: 2 · Service and Ingress :443")
+               "Go 1.27 · distroless · :8080<br/>replicas: 2 · Service · HTTPRoute :443")
     subsystem(d, 500, 540, 290, 75, "simple-cd Server", size=15)
     job = node(d, 850, 430, 330, 210, "pod", "simple-cd-executor Job",
                "Go 1.27 · helm 4.3 · kubectl 1.37 · ssh<br/>one Job per deployment")

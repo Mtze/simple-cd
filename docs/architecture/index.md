@@ -1,6 +1,6 @@
 ---
 title: Architecture
-nav_order: 7
+nav_order: 8
 has_children: true
 ---
 
@@ -77,7 +77,7 @@ In code the components map to packages: Delivery API `internal/api`, Session Man
 | Node | Runs | Notes |
 |---|---|---|
 | Web Browser | simple-cd Console | React 19, embedded in the server binary and served by it |
-| Delivery Cluster, pod `simple-cd` | simple-cd Server | Go 1.27, distroless, `:8080`, 2 or more replicas behind a Service and an Ingress, service account `simple-cd` |
+| Delivery Cluster, pod `simple-cd` | simple-cd Server | Go 1.27, distroless, `:8080`, 2 or more replicas behind a Service and an HTTPRoute on the platform's Gateway, service account `simple-cd` |
 | Delivery Cluster, pod `simple-cd-executor` Job | simple-cd Executor | one Job per deployment in the same namespace, service account `simple-cd-executor` without Kubernetes permissions |
 | Delivery Cluster, API Server | Kubernetes Control Plane | creates and watches the executor Jobs |
 | PostgreSQL | simple-cd Database | PostgreSQL 18, operated outside the chart (managed service or an operator such as CloudNativePG) |
@@ -92,7 +92,7 @@ In code the components map to packages: Delivery API `internal/api`, Session Man
 
 | Path | Service | Protocol |
 |---|---|---|
-| Web Browser to `simple-cd` pod | Delivery Service | HTTPS :443 through the Ingress |
+| Web Browser to `simple-cd` pod | Delivery Service | HTTPS :443 through the Gateway (Gateway API HTTPRoute) |
 | Web Browser to Keycloak | Authentication Service | HTTPS, OIDC authorization code with PKCE |
 | `simple-cd` pod to Keycloak | Authentication Service | HTTPS (discovery, token exchange, JWKS) |
 | `simple-cd` pod to PostgreSQL | Persistence Service | TCP :5432 |

@@ -53,13 +53,14 @@ service:
   type: ClusterIP
   port: 80
 
-ingress:
+# An HTTPRoute (Gateway API) that attaches simple-cd to an existing Gateway.
+# TLS terminates at the Gateway listener. Log streams are long-lived
+# requests, so the Gateway must not cut requests after a short timeout.
+httpRoute:
   enabled: false
-  className: ""
+  parentRefs: []     # e.g. [{name: public, namespace: gateway-system, sectionName: https}]
+  hostnames: [cd.example.org]
   annotations: {}
-  host: cd.example.org
-  tls:
-    secretName: ""
 
 # Additional environment variables for the server, e.g.
 #   - {name: SIMPLECD_REGISTRY_PLAIN_HTTP, value: "registry.local:5000"}
