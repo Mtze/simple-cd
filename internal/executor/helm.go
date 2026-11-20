@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/Mtze/simple-cd/internal/repoconfig"
@@ -18,8 +19,13 @@ func (x *executor) helmDeploy(ctx context.Context, h *HelmSpec) error {
 		return err
 	}
 
+	host, _, _ := strings.Cut(repoconfig.ChartRef(h.Chart), "/")
+	var plain []string
+	if x.plainHTTP(host) {
+		plain = []string{"--plain-http"}
+	}
+
 	if h.RegistrySecret != "" {
-		host, _, _ := strings.Cut(repoconfig.ChartRef(h.Chart), "/")
 		x.logf("==> Logging in to registry %s", host)
 		data, err := x.vault.read(ctx, h.RegistrySecret)
 		if err != nil {
@@ -33,7 +39,8 @@ func (x *executor) helmDeploy(ctx context.Context, h *HelmSpec) error {
 		if err != nil {
 			return err
 		}
-		if err := x.run(ctx, "", pass, "helm", "registry", "login", host, "--username", user, "--password-stdin"); err != nil {
+		args := append([]string{"registry", "login", host, "--username", user, "--password-stdin"}, plain...)
+		if err := x.run(ctx, "", pass, "helm", args...); err != nil {
 			return err
 		}
 	}
@@ -74,9 +81,16 @@ func (x *executor) helmDeploy(ctx context.Context, h *HelmSpec) error {
 		timeout = "10m"
 	}
 	x.logf("==> helm upgrade --install %s %s --version %s --namespace %s", h.Release, h.Chart, h.Version, h.Namespace)
-	return x.run(ctx, "", "", "helm", "upgrade", "--install", h.Release, h.Chart,
+	args := append([]string{"upgrade", "--install", h.Release, h.Chart,
 		"--version", h.Version, "--namespace", h.Namespace,
-		"--values", valuesFile, "--wait", "--timeout", timeout)
+		"--values", valuesFile, "--wait", "--timeout", timeout}, plain...)
+	return x.run(ctx, "", "", "helm", args...)
+}
+
+// plainHTTP reports whether host is listed in SIMPLECD_REGISTRY_PLAIN_HTTP,
+// which local test setups use for registries without TLS.
+func (x *executor) plainHTTP(host string) bool {
+	return slices.Contains(strings.Split(x.getenv("SIMPLECD_REGISTRY_PLAIN_HTTP"), ","), host)
 }
 
 func (x *executor) helmTeardown(ctx context.Context, h *HelmSpec) error {

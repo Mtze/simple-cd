@@ -61,6 +61,10 @@ ingress:
   tls:
     secretName: ""
 
+# Additional environment variables for the server, e.g.
+#   - {name: SIMPLECD_REGISTRY_PLAIN_HTTP, value: "registry.local:5000"}
+extraEnv: []
+
 resources:
   requests: {cpu: 50m, memory: 64Mi}
   limits: {memory: 256Mi}

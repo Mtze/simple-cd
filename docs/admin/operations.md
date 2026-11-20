@@ -113,5 +113,6 @@ Useful messages:
 | `webhook processing failed` | a webhook could not be processed, with the delivery id |
 | `auto-deploy skipped` | with target and reason |
 | `registry checks are off` | `SIMPLECD_REGISTRY_CHECK=off`, never in production |
+| `registry is reached over plain http` | `SIMPLECD_REGISTRY_PLAIN_HTTP` is set, never in production |
 
 The executor log of each deployment is in the UI and, while the Job exists, in `kubectl logs job/simple-cd-<id>`.

@@ -153,7 +153,13 @@ func serve() error {
 	app := &github.App{ID: appID, Key: key, BaseURL: env("SIMPLECD_GITHUB_API_URL", "https://api.github.com")}
 	reporter := &github.Reporter{App: app, BaseURL: baseURL}
 
-	reg := &registry.Checker{}
+	reg := &registry.Checker{PlainHTTP: map[string]bool{}}
+	for _, host := range strings.Split(env("SIMPLECD_REGISTRY_PLAIN_HTTP", ""), ",") {
+		if host != "" {
+			slog.Warn("registry is reached over plain http: for test setups only", "host", host)
+			reg.PlainHTTP[host] = true
+		}
+	}
 	if f := env("SIMPLECD_REGISTRY_AUTH_FILE", ""); f != "" {
 		if reg.Credentials, err = registry.LoadDockerConfig(f); err != nil {
 			return err
@@ -204,7 +210,7 @@ func serve() error {
 // executorEnv collects the settings passed through to every executor run.
 func executorEnv() map[string]string {
 	out := map[string]string{}
-	for _, k := range []string{"VAULT_ADDR", "VAULT_NAMESPACE", "SIMPLECD_VAULT_ROLE", "SIMPLECD_VAULT_AUTH_MOUNT"} {
+	for _, k := range []string{"VAULT_ADDR", "VAULT_NAMESPACE", "SIMPLECD_VAULT_ROLE", "SIMPLECD_VAULT_AUTH_MOUNT", "SIMPLECD_REGISTRY_PLAIN_HTTP"} {
 		if v := os.Getenv(k); v != "" {
 			out[k] = v
 		}

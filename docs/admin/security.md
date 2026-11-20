@@ -105,4 +105,4 @@ The server's own service account may only manage Jobs and read pods and logs in 
 - One Vault role for all executor Jobs: every Job can read every secret below `secret/cd/`.
 - Webhook processing happens in memory after the `202` answer; a crash in between loses the event until it is redelivered.
 - Locks coordinate people; they are not an access control.
-- `SIMPLECD_REGISTRY_CHECK=off` and `SIMPLECD_RUNNER=process` are for local development only.
+- `SIMPLECD_REGISTRY_CHECK=off`, `SIMPLECD_REGISTRY_PLAIN_HTTP` and `SIMPLECD_RUNNER=process` are for local development and tests only.

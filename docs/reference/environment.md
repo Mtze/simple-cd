@@ -49,6 +49,7 @@ The pass-through variables for the executor (`VAULT_*`, `SIMPLECD_VAULT_*`) are 
 | `SIMPLECD_GIT_SSH_HOST` | no | `github.com` | SSH host for cloning app repositories for Ansible targets with `source: repo` |
 | `SIMPLECD_REGISTRY_AUTH_FILE` | no | | Docker `config.json` with registry credentials for the existence checks |
 | `SIMPLECD_REGISTRY_CHECK` | no | `on` | `off` disables all registry checks. Local development only. |
+| `SIMPLECD_REGISTRY_PLAIN_HTTP` | no | | comma-separated registry hosts (`host:port`) reached over http instead of https, for checks and `helm`. Test setups only, such as the [end-to-end test](../contributors/testing.md#end-to-end-test). |
 | `SIMPLECD_RUNNER` | no | `kubernetes` | `kubernetes` (Jobs) or `process` (local child process, single replica, development only) |
 | `SIMPLECD_EXECUTOR_IMAGE` | with `kubernetes` | | executor image for Helm and Compose targets |
 | `SIMPLECD_EXECUTOR_ANSIBLE_IMAGE` | no | `SIMPLECD_EXECUTOR_IMAGE` | executor image for Ansible targets |
@@ -66,6 +67,7 @@ The server copies these from its own environment into every executor run, if set
 | `VAULT_NAMESPACE` | Vault Enterprise namespace |
 | `SIMPLECD_VAULT_ROLE` | Vault Kubernetes auth role |
 | `SIMPLECD_VAULT_AUTH_MOUNT` | Vault Kubernetes auth mount |
+| `SIMPLECD_REGISTRY_PLAIN_HTTP` | registries `helm` reaches over http |
 | `VAULT_TOKEN` | only with the `process` runner, for local development |
 
 The Kubernetes runner reads `KUBERNETES_SERVICE_HOST`, `KUBERNETES_SERVICE_PORT` and the pod's service account files, which Kubernetes provides.

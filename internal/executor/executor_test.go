@@ -290,6 +290,33 @@ func TestHelmDeploy(t *testing.T) {
 	e.assertSafe(t, secrets)
 }
 
+func TestHelmPlainHTTPRegistry(t *testing.T) {
+	e := setup(t, map[string]map[string]any{
+		"secret/cd/clusters/test": clusterSecret,
+		"secret/cd/registry":      {"username": "robot", "password": "pw"},
+	})
+	e.vars["SIMPLECD_REGISTRY_PLAIN_HTTP"] = "other:5000,kind-registry:5000"
+	spec := helmSpec(HelmSpec{Namespace: "app", Chart: "oci://kind-registry:5000/charts/app", Version: "1.0.0", RegistrySecret: "secret/cd/registry"})
+	if err := e.run(t, spec); err != nil {
+		t.Fatalf("run: %v\n%s", err, e.out.String())
+	}
+	for _, sub := range []string{"upgrade", "registry"} {
+		c := e.find(t, "helm", sub)
+		if len(c) != 1 || !slices.Contains(c[0].Args, "--plain-http") {
+			t.Errorf("helm %s without --plain-http: %v", sub, c)
+		}
+	}
+
+	e = setup(t, map[string]map[string]any{"secret/cd/clusters/test": clusterSecret})
+	e.vars["SIMPLECD_REGISTRY_PLAIN_HTTP"] = "kind-registry:5000"
+	if err := e.run(t, helmSpec(HelmSpec{Namespace: "app", Chart: "oci://ghcr.io/org/app", Version: "1.0.0"})); err != nil {
+		t.Fatal(err)
+	}
+	if up := e.find(t, "helm", "upgrade"); slices.Contains(up[0].Args, "--plain-http") {
+		t.Error("--plain-http for a registry that is not listed")
+	}
+}
+
 func TestHelmValuesVaultOverridesRepo(t *testing.T) {
 	secrets := map[string]map[string]any{
 		"secret/cd/clusters/test": clusterSecret,

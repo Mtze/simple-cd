@@ -84,6 +84,7 @@ The chart lives in the repository at `deploy/helm/simple-cd`.
 | `config` | one default registry, no targets | the [target configuration](configuration.md), rendered into a ConfigMap |
 | `service.type`, `service.port` | `ClusterIP`, `80` | Service |
 | `ingress.enabled`, `className`, `annotations`, `host`, `tls.secretName` | `false`, `""`, `{}`, `cd.example.org`, `""` | Ingress |
+| `extraEnv` | `[]` | additional environment variables for the server, see the [environment reference](../reference/environment.md) |
 | `resources` | requests 50m CPU, 64Mi; limit 256Mi | server pod resources |
 | `podAnnotations`, `nodeSelector`, `tolerations`, `affinity` | empty | scheduling |
 

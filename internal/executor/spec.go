@@ -12,6 +12,7 @@
 //	SIMPLECD_VAULT_AUTH_MOUNT  auth mount, default "kubernetes"
 //	SIMPLECD_SA_TOKEN_FILE     service account JWT, default /var/run/secrets/kubernetes.io/serviceaccount/token
 //	SIMPLECD_SECRETS_DIR       where secret material is written (mode 0600), default /secrets (an in-memory emptyDir)
+//	SIMPLECD_REGISTRY_PLAIN_HTTP  comma-separated registry hosts helm reaches over http (local test registries only)
 //
 // Secret references such as "secret/cd/clusters/test" are KV v2 paths whose
 // first segment is the mount. Keys the executor expects:
