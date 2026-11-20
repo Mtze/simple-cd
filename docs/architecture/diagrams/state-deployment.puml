@@ -1,0 +1,25 @@
+@startuml state-deployment
+!include style.iuml
+title Deployment status
+
+[*] --> pending : manual deploy, auto-deploy,\nwaiting place or teardown\n(INSERT, one per slot)
+pending --> running : worker created the Job
+pending --> failed : Job could not start\n(target removed, spec error)
+running --> succeeded : Job succeeded
+running --> failed : Job failed\nor disappeared
+running --> timed_out : Job deadline (jobTimeout)\nor jobTimeout + 2 min grace
+succeeded --> [*]
+failed --> [*]
+timed_out --> [*]
+
+note right of running
+  Logs stream live over SSE.
+  The worker stores at most
+  2 MiB of log when it finishes.
+end note
+note bottom of failed
+  A lock taken by the deploy
+  stays in place on failed
+  and timed_out.
+end note
+@enduml

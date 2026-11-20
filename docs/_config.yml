@@ -1,0 +1,43 @@
+title: simple-cd
+description: A small continuous delivery server that deploys finished artifacts from GitHub to Helm, Docker Compose and Ansible targets.
+url: https://mtze.me
+baseurl: /simple-cd
+
+remote_theme: just-the-docs/just-the-docs@v0.12.0
+plugins:
+  - jekyll-remote-theme
+  - jekyll-relative-links
+  - jekyll-seo-tag
+
+relative_links:
+  enabled: true
+  collections: false
+
+search_enabled: true
+heading_anchors: true
+
+aux_links:
+  "simple-cd on GitHub":
+    - "https://github.com/Mtze/simple-cd"
+
+gh_edit_link: true
+gh_edit_link_text: "Edit this page on GitHub"
+gh_edit_repository: "https://github.com/Mtze/simple-cd"
+gh_edit_branch: "main"
+gh_edit_source: docs
+gh_edit_view_mode: "tree"
+
+footer_content: "simple-cd is distributed under the MIT License."
+
+callouts:
+  note:
+    title: Note
+    color: blue
+  warning:
+    title: Warning
+    color: red
+
+exclude:
+  - architecture/diagrams/*.puml
+  - architecture/diagrams/*.iuml
+  - architecture/diagrams/render.sh

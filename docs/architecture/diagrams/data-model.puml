@@ -1,0 +1,154 @@
+@startuml data-model
+!include style.iuml
+title simple-cd data model
+hide empty methods
+skinparam DefaultTextAlignment left
+
+package "Target config (YAML, read-only at runtime)" as CFG {
+  class Config
+  class Defaults {
+    lockDuration = 1h
+    jobTimeout = 30m
+    previewTTL = 72h
+    logRetention = 90d
+    auditRetention = 365d
+    artifactRetention = 30d
+    keepBranchArtifacts = 50
+    registries : string[*]
+  }
+  class Project {
+    name : owner/repo
+    registries : string[*]
+  }
+  class Target {
+    id : string
+    project : owner/repo
+    type : helm | compose | ansible
+    role : string [0..1]
+    lockable : bool
+    preview : bool
+    lockDuration, jobTimeout, previewTTL [0..1]
+  }
+  class AutoDeploy {
+    from : pr | branch | release [1..*]
+    branches : string[*]
+  }
+}
+
+package "Repository input (snapshot per commit)" as REPO {
+  class Manifest <<deploy.json>> {
+    version = 1
+    autoDeploy : target id[*]
+  }
+  class Image {
+    name : string
+    ref : host/path@sha256:...
+  }
+  class ManifestHelm {
+    version : string
+  }
+  class RepoConfig <<.cd.yaml>>
+  class HelmConfig {
+    chart : oci://...
+    set : map
+  }
+  class HelmTarget {
+    values : repo path [0..1]
+    set : map
+  }
+  class ComposeConfig {
+    path : repo path
+  }
+  class AnsibleConfig {
+    playbook : repo path
+  }
+}
+
+package "Postgres (runtime state)" as DB {
+  class Artifact {
+    id : int
+    repo, sha (unique together)
+    source : pr | branch | release
+    refName : string
+    pr : int [0..1]
+    prClosed : bool
+    runId, runUrl, workflow
+    triggeringActor : string
+    otherWorkflows : bool
+    files : path -> content
+    reasons : string[*]
+  }
+  class Deployment {
+    id : int
+    kind : deploy | teardown
+    targetId : string
+    slot : "" | PR number
+    actor, actorDetail
+    status : pending | running | succeeded | failed | timed_out
+    jobName, snapshot, log, error
+    githubDeploymentId [0..1]
+    createdAt, startedAt, finishedAt
+  }
+  class QueueEntry <<deploy_queue>> {
+    targetId, slot (key)
+    actorDetail
+  }
+  class TargetState {
+    targetId : string
+    maintenance : bool
+    maintenanceReason, maintenanceBy, maintenanceSince
+    lockHolder : string
+    lockUntil : time [0..1]
+  }
+  class LockEvent {
+    holder : string
+    action : acquired | extended | released | overridden
+    byUser : string
+    until [0..1], at
+  }
+  class Preview {
+    repo, pr, targetId
+    namespace : pr-<repo>-<pr>
+    status : active | deleting | deleted
+    expiresAt : time
+  }
+  class AuditEvent {
+    at, actor, action, object
+    details : JSON
+  }
+  class Session {
+    idHash : sha256 of cookie
+    subject, username, name, email
+    roles : string[*]
+    expiresAt : time
+  }
+}
+
+Config *-- "1" Defaults
+Config *-- "0..*" Project
+Config *-- "0..*" Target
+Project "1" -- "0..*" Target : owns >
+Target *-- "0..1" AutoDeploy
+
+Artifact *-- "1" Manifest
+Artifact *-- "0..1" RepoConfig
+Manifest *-- "0..*" Image
+Manifest *-- "0..1" ManifestHelm
+RepoConfig *-- "0..1" HelmConfig
+RepoConfig *-- "0..1" ComposeConfig
+RepoConfig *-- "0..1" AnsibleConfig
+HelmConfig *-- "0..*" HelmTarget : per target id
+
+Project "1" .. "0..*" Artifact : repo
+Artifact "0..1" -- "0..*" Deployment : deploys >
+Artifact "1" -- "0..*" QueueEntry : waits >
+Target "1" .. "0..*" Deployment : targetId
+Target "1" .. "0..1" TargetState : targetId
+Target "1" .. "0..*" LockEvent : targetId
+Target "1" .. "0..*" Preview : targetId
+Target "1" .. "0..*" QueueEntry : one per slot
+
+AuditEvent -[hidden]down- Session
+TargetState -[hidden]down- LockEvent
+Preview -[hidden]down- QueueEntry
+@enduml

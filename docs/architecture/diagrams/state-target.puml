@@ -1,0 +1,30 @@
+@startuml state-target
+!include style.iuml
+title Target status
+
+state "evaluate" as C <<choice>>
+state "maintenance" as M : set by a maintainer or platform admin,\nwith reason. Nobody deploys,\nno auto-deploy.
+state "deploying" as D : a pending or running deployment\n(never for preview targets,\nthey have one slot per PR)
+state "locked" as L : lockable target, lock until in the future.\nHolder deploys, maintainers override.
+state "available" as A : developers and maintainers deploy
+
+[*] --> C
+C --> M : [maintenance]
+C --> D : [else if active deployment]
+C --> L : [else if lockable and locked]
+C --> A : [else]
+
+A --> C : deploy requested
+L --> C : deploy by holder or override,\nlock released or expired
+D --> C : deployment finished
+M --> C : maintenance off
+A --> M : maintenance on
+L --> M : maintenance on
+D --> M : maintenance on
+
+note bottom of C
+  The server computes the status on every
+  request. The first matching guard wins:
+  maintenance > deploying > locked > available.
+end note
+@enduml

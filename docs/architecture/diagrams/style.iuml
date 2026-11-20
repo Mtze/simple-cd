@@ -1,0 +1,44 @@
+' Shared look for all simple-cd diagrams. Included by every .puml file.
+!theme plain
+skinparam defaultFontName "Helvetica"
+skinparam defaultFontSize 13
+skinparam shadowing false
+skinparam roundCorner 6
+skinparam ArrowColor #475569
+skinparam ArrowFontColor #334155
+skinparam ArrowFontSize 11
+skinparam BackgroundColor #FFFFFF
+skinparam DefaultTextAlignment center
+skinparam NoteBackgroundColor #FEF9C3
+skinparam NoteBorderColor #CA8A04
+skinparam PackageBorderColor #64748B
+skinparam PackageFontColor #334155
+skinparam NodeBorderColor #64748B
+skinparam NodeBackgroundColor #F8FAFC
+skinparam ComponentBorderColor #2563EB
+skinparam ComponentBackgroundColor #EFF6FF
+skinparam DatabaseBorderColor #0F766E
+skinparam DatabaseBackgroundColor #F0FDFA
+skinparam ClassBorderColor #2563EB
+skinparam ClassBackgroundColor #F8FAFC
+skinparam ClassHeaderBackgroundColor #EFF6FF
+skinparam StateBorderColor #2563EB
+skinparam StateBackgroundColor #EFF6FF
+skinparam ActivityBorderColor #2563EB
+skinparam ActivityBackgroundColor #EFF6FF
+skinparam ActivityDiamondBorderColor #2563EB
+skinparam ActivityDiamondBackgroundColor #FFFFFF
+skinparam ParticipantBorderColor #2563EB
+skinparam ParticipantBackgroundColor #EFF6FF
+skinparam ActorBorderColor #2563EB
+skinparam ActorBackgroundColor #EFF6FF
+skinparam SequenceLifeLineBorderColor #94A3B8
+skinparam SequenceGroupBorderColor #94A3B8
+skinparam SequenceGroupBackgroundColor #F1F5F9
+skinparam SequenceBoxBorderColor #CBD5E1
+skinparam SequenceBoxBackgroundColor #F8FAFC
+skinparam CloudBorderColor #64748B
+skinparam CloudBackgroundColor #F8FAFC
+skinparam ArtifactBorderColor #64748B
+skinparam ArtifactBackgroundColor #FFFFFF
+hide stereotype

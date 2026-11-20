@@ -1,0 +1,68 @@
+@startuml act-preview
+!include style.iuml
+title Preview lifecycle
+
+start
+:Workflow run for PR #n succeeds,
+deploy.json asks for auto-deploy to the preview target;
+partition "server: auto-deploy" {
+  if (target allows from: [pr],\nartifact is deployable,\nnot in maintenance?) then (no)
+    :skip: audit deploy.skipped,
+    GitHub deployment "error";
+    stop
+  endif
+  if (slot (target, PR #n) busy?) then (yes)
+    :put artifact in the waiting place
+    (replaces an older waiting artifact,
+    newest wins);
+    :worker starts it once the slot is free;
+  else (no)
+  endif
+  :insert pending deployment;
+  :preview row active,
+  expiresAt = now + previewTTL;
+}
+partition "executor Job" {
+  if (namespace pr-<repo>-<n> exists?) then (no)
+    :kubectl create namespace
+    with labels cd/managed=true,
+    cd/target, cd/pr;
+  else (yes)
+    if (labels match?) then (no)
+      :fail, never adopt
+      a foreign namespace; <<#FEE2E2>>
+      stop
+    endif
+  endif
+  :helm upgrade ~--install ~--wait;
+}
+:on success the worker resets the TTL;
+note right
+  Every new push to the PR
+  repeats these steps and
+  resets the TTL again.
+end note
+:wait for PR close or TTL expiry;
+if (trigger) then (PR closed)
+  :mark PR artifacts closed,
+  schedule teardown (slot busy:
+  expire now, worker retries);
+else (TTL expired)
+  :worker schedules teardown;
+endif
+:preview status deleting;
+partition "executor Job (teardown)" {
+  if (namespace labels match?) then (yes)
+    :helm uninstall;
+    :kubectl delete namespace;
+    :preview status deleted,
+    GitHub deployment inactive;
+  else (no)
+    :refuse to delete,
+    teardown fails; <<#FEE2E2>>
+    :preview active again,
+    retry in 10 minutes;
+  endif
+}
+stop
+@enduml

@@ -1,0 +1,52 @@
+@startuml seq-ingest
+!include style.iuml
+title Artifact ingestion
+autonumber
+
+participant "GitHub" as GH
+box "simple-cd server"
+  participant "api" as API
+  participant "ingest" as IN
+  participant "core" as CORE
+  participant "store" as ST
+end box
+participant "OCI registry" as REG
+database "Postgres" as PG
+
+GH -> API : POST /webhooks/github\nworkflow_run
+API -> API : verify X-Hub-Signature-256
+alt signature invalid
+  API --> GH : 401
+else valid
+  API --> GH : 202 Accepted
+  API ->> IN : WorkflowRun (in background)
+end
+IN -> IN : action completed\nand conclusion success?
+IN -> IN : repository is a project\nin the target config?
+alt head repository differs (fork)
+  IN -> ST : audit webhook.fork_rejected
+  ST -> PG : INSERT audit_events
+else same repository
+  IN -> GH : list run artifacts "cd-deploy",\ndownload deploy.json
+  note right of IN : no cd-deploy artifact:\nthe run is ignored
+  IN -> IN : source detection\npull_request -> pr (PR number)\nrelease or tag -> release\notherwise -> branch
+  opt pull request number missing in payload
+    IN -> GH : GET /commits/{sha}/pulls
+  end
+  IN -> IN : parse deploy.json\n(errors become reasons)
+  IN -> GH : read .cd.yaml at SHA
+  IN -> GH : read values files, compose file,\nplaybook at SHA (snapshot)
+  IN -> REG : HEAD manifest per image digest\nand chart version
+  IN -> ST : UpsertArtifact (newest run wins)
+  ST -> PG : INSERT ... ON CONFLICT (repo, sha)
+  alt older run than the stored one
+    ST --> IN : not applied, stop
+  else applied
+    IN -> CORE : AutoDeploy(artifact)
+    loop each target id in autoDeploy
+      CORE -> CORE : rule, readiness,\nregistry recheck
+      CORE -> ST : transaction: maintenance or lock -> skip,\nslot busy -> waiting place,\nelse insert pending deployment
+    end
+  end
+end
+@enduml

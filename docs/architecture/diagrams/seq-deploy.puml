@@ -1,0 +1,60 @@
+@startuml seq-deploy
+!include style.iuml
+title Manual deploy with confirmation and lock
+autonumber
+
+actor "Developer" as U
+participant "UI" as UI
+box "simple-cd server"
+  participant "api + core" as CORE
+  participant "worker\n(leader)" as W
+end box
+database "Postgres" as PG
+participant "Kubernetes API" as K8S
+participant "executor Job" as EX
+participant "Vault" as V
+participant "Target cluster" as T
+participant "GitHub" as GH
+
+U -> UI : click Deploy
+UI -> CORE : GET /api/targets/{id}/plan?artifact=12
+CORE -> PG : readiness, last successful snapshot,\ntarget state
+CORE --> UI : status, reasons, diff,\nneedsOverride
+UI -> U : show diff and lock state
+U -> UI : tick "I reviewed", Deploy
+UI -> CORE : POST /api/targets/{id}/deployments\n{artifactId, confirm, override}
+CORE -> CORE : permissions, readiness,\nregistry recheck, diff
+alt diff and not confirmed
+  CORE --> UI : 409 confirmation_required
+else
+  CORE -> PG : BEGIN
+  CORE -> PG : SELECT target_state FOR UPDATE
+  alt maintenance
+    CORE --> UI : 409 maintenance
+  else locked by someone else, no override
+    CORE --> UI : 409 locked
+  else
+    CORE -> PG : INSERT deployment (pending)\nunique per (target, slot)
+    CORE -> PG : set lock holder and until,\nlock_history (lockable targets)
+    CORE -> PG : audit deploy.requested, COMMIT
+    CORE --> UI : 201 Deployment
+  end
+end
+UI -> CORE : GET /api/deployments/{id}/log (SSE)
+
+W -> PG : pending deployments (tick every 2 s)
+W -> K8S : create Job simple-cd-<id>
+W -> PG : mark running
+W -> GH : create deployment,\nstatus in_progress
+K8S -> EX : start pod
+EX -> V : login (Kubernetes auth)
+EX -> V : read kubeconfig, values,\nregistry secret
+EX -> T : helm upgrade ~--install ~--wait
+CORE -> K8S : follow pod log
+CORE --> UI : event: log (lines)
+EX --> K8S : exit 0
+W -> K8S : Job state
+W -> PG : status succeeded, store log
+W -> GH : deployment status success
+CORE --> UI : event: status, event: end
+@enduml

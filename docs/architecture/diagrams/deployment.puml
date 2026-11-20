@@ -1,0 +1,59 @@
+@startuml deployment
+!include style.iuml
+title simple-cd deployment
+
+actor "Browser" as User
+node "GitHub" as GH
+
+node "Platform Kubernetes cluster" as K8s {
+  node "Namespace simple-cd" as NS {
+    artifact "Ingress" as Ing
+    artifact "Service" as Svc
+    node "Deployment simple-cd\n(N replicas)" as Dep {
+      component "simple-cd pod\n(api + worker)" as Pod
+    }
+    artifact "ConfigMap\nconfig.yaml" as CM
+    artifact "Secret\n(existingSecret)" as Sec
+    artifact "ServiceAccount\nsimple-cd\n(Role: jobs, pods, pods/log)" as SA
+    node "Job simple-cd-<id>" as Job {
+      component "executor container\nuid 10001, read-only root" as Exec
+    }
+    artifact "ServiceAccount\nsimple-cd-executor\n(no Kubernetes rights)" as ESA
+  }
+}
+
+database "Postgres" as PG
+node "Keycloak" as KC
+node "Vault" as Vault
+node "OCI registry" as Reg
+
+node "Target cluster" as TC {
+  artifact "Namespace app\nSA with admin RoleBinding" as TNS
+}
+node "Preview cluster" as PC {
+  artifact "Namespaces pr-<repo>-<pr>\nlabels cd/managed, cd/target, cd/pr" as PNS
+}
+node "Compose VM" as VM {
+  artifact "user deploy\n(docker group)" as DU
+}
+node "Ansible hosts" as AH
+
+User --> Ing : HTTPS
+Ing --> Svc
+Svc --> Pod
+GH --> Ing : webhooks
+Pod --> GH : REST API
+Pod --> PG : SQL
+Pod --> KC : OIDC
+Pod --> Reg : registry check
+Pod ..> CM : mounts
+Pod ..> Sec : mounts
+Pod ..> SA : runs as
+Pod --> Job : creates
+Job ..> ESA : runs as
+Exec --> Vault : Kubernetes auth
+Exec --> TC : helm (kubeconfig)
+Exec --> PC : kubectl, helm
+Exec --> VM : ssh
+Exec --> AH : ssh
+@enduml

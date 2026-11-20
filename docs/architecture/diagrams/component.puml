@@ -1,0 +1,63 @@
+@startuml component
+!include style.iuml
+title simple-cd components
+left to right direction
+
+package "GitHub" {
+  component [Repository\n(.cd.yaml, chart, Dockerfiles)] as Repo
+  component [GitHub Actions\nworkflow] as Actions
+  component [cd-publish action] as Publish
+  component [GitHub App\n(webhooks, REST API)] as App
+  component [Deployments API] as GHDeploy
+}
+
+cloud "OCI registry" as Registry
+
+package "simple-cd server" {
+  component [api\n(JSON API, webhook, UI)] as API
+  component [auth\n(OIDC, sessions)] as Auth
+  component [ingest] as Ingest
+  component [core\n(rules, readiness, locks)] as Core
+  component [worker\n(leader only)] as Worker
+  component [runner] as Runner
+  component [store] as Store
+  component [config\n(target config)] as Config
+}
+
+database "Postgres" as PG
+component [Keycloak] as KC
+component [Vault] as Vault
+component [executor Job] as Exec
+
+package "Targets" {
+  node "Helm cluster" as HelmT
+  node "Preview cluster" as PrevT
+  node "Compose VM" as VM
+  node "Ansible hosts" as AnsT
+}
+
+Repo --> Actions : triggers
+Actions --> Publish : runs
+Actions --> Registry : push images\nand chart
+Publish --> Actions : upload\ncd-deploy artifact
+App --> API : workflow_run,\npull_request
+API --> Auth
+API --> Ingest
+API --> Core
+Auth --> KC : OIDC login
+Ingest --> App : deploy.json,\n.cd.yaml, files
+Ingest --> Registry : digest check
+Ingest --> Core : auto-deploy
+Core --> Store
+Core --> Config
+Worker --> Core
+Worker --> Runner
+Worker --> GHDeploy : deployment status
+Store --> PG
+Runner --> Exec : create Job,\nread logs
+Exec --> Vault : Kubernetes auth,\nread secrets
+Exec --> HelmT : helm upgrade
+Exec --> PrevT : namespace + helm
+Exec --> VM : ssh, docker compose
+Exec --> AnsT : ansible-playbook
+@enduml

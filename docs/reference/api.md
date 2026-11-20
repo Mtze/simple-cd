@@ -1,13 +1,18 @@
 ---
 title: HTTP API
 parent: Reference
+nav_order: 4
 ---
 
 # HTTP API
+{: .no_toc }
 
 The UI talks to the server through this JSON API. All endpoints live under
-`/api` and need a session cookie, except the health checks and the GitHub
-webhook.
+`/api` and need a session cookie, except the login endpoints, the health
+checks and the GitHub webhook.
+
+1. TOC
+{:toc}
 
 ## Conventions
 
@@ -16,12 +21,30 @@ webhook.
   navigates to `/auth/login?return=<current path>`. With an existing Keycloak
   SSO session the user is back without seeing a login form.
 - Requests that change something (`POST`, `PUT`, `DELETE`) must send the
-  header `X-Requested-With: simple-cd`. The server also checks the `Origin`
-  header. Both protect against cross-site requests.
+  header `X-Requested-With: simple-cd`. If the request carries an `Origin`
+  header, it must match `SIMPLECD_BASE_URL`. Both protect against cross-site
+  requests; failures get `403` with `code: "csrf"`.
+- Request bodies are JSON, at most 64 KiB, and unknown fields are rejected
+  (`400`, `code: "bad_request"`).
+- API responses carry `Cache-Control: no-store`.
 - Errors use `{"error": "<message>", "code": "<code>"}` plus extra fields
   described per endpoint.
 - Every response for a target includes `permissions`. The UI hides controls
   the user cannot use; the server enforces the same rules.
+
+## Error codes
+
+| Status | `code` | Meaning |
+|---|---|---|
+| 400 | `bad_request` | invalid body or query, or a missing maintenance reason |
+| 401 | `unauthenticated` | no valid session |
+| 403 | `forbidden` | missing permission |
+| 403 | `csrf` | missing `X-Requested-With` header or foreign `Origin` |
+| 404 | `not_found` | unknown project, target, artifact, deployment, preview or endpoint |
+| 409 | `confirmation_required`, `locked`, `maintenance`, `slot_busy`, `not_active` | see the endpoints |
+| 422 | `not_deployable` | the artifact cannot go to the target, with `reasons` |
+| 500 | `internal` | unexpected error, details in the server log |
+| 502 | `registry_unavailable` | the registry check before a deploy could not run |
 
 ## Types
 
@@ -124,7 +147,8 @@ type User = { username: string; name: string; email: string; roles: string[] };
 
 ### `GET /api/projects/{owner}/{repo}/artifacts?source=pr|branch|release&closed=true`
 
-`Artifact[]`, newest first. Without `closed=true`, artifacts of closed PRs are hidden.
+`Artifact[]`, newest first, at most 100. Without `closed=true`, artifacts of
+closed PRs are hidden. `source` is optional; an unknown source gets `400`.
 
 ### `GET /api/artifacts/{id}`
 
@@ -132,8 +156,16 @@ type User = { username: string; name: string; email: string; roles: string[] };
 
 ### `GET /api/targets/{id}`
 
-`{ "target": Target, "deployments": Deployment[], "lockHistory": LockEvent[] }` with
-`LockEvent = { id, targetId, holder, action: "acquired"|"extended"|"released"|"overridden", byUser, until?, at }`.
+`{ "target": Target, "deployments": Deployment[], "lockHistory": LockEvent[] }`
+with the last 50 deployments and the last 20 lock events, newest first:
+
+```ts
+type LockEvent = {
+  id: number; targetId: string; holder: string;
+  action: "acquired" | "extended" | "released" | "overridden";
+  byUser: string; until?: string; at: string;
+};
+```
 
 ### `GET /api/targets/{id}/plan?artifact={artifactId}`
 
@@ -145,28 +177,36 @@ What the deploy dialog shows before confirming:
   "lockHolder": "bob", "lockUntil": "...", "permissions": { ... } }
 ```
 
-`diff` is empty when nothing but images changed or for the first deploy.
+`diff` is empty when nothing but images changed, for the first deploy in the
+slot, or when `reasons` is not empty. `needsOverride` is true when someone else
+holds the lock. The plan changes nothing; `artifact` is required (`400`).
 
 ### `POST /api/targets/{id}/deployments`
 
 Body `{ "artifactId": 12, "confirm": true, "override": false }`.
+`confirm` says the user saw the diff, `override` takes over someone else's lock
+(maintainers and platform admins).
 
-- `201` with the `Deployment`.
+- `201` with the `Deployment` (without `artifact`).
 - `403` `code: "forbidden"`.
+- `404` `code: "not_found"` for an unknown target or artifact.
 - `409` with one of:
   - `code: "confirmation_required"`, `diff`
   - `code: "locked"`, `holder`, `until`
   - `code: "maintenance"`
   - `code: "slot_busy"`
 - `422` `code: "not_deployable"`, `reasons: string[]`
+- `502` `code: "registry_unavailable"`
 
 ### `POST /api/targets/{id}/lock/release`
 
-`204`. The holder, a maintainer or a platform admin.
+`204`. The holder, a maintainer or a platform admin. Releasing a target that
+is not locked is a no-op.
 
 ### `PUT /api/targets/{id}/maintenance`
 
-Body `{ "enabled": true, "reason": "Docker upgrade" }`. `204`. Maintainers and platform admins.
+Body `{ "enabled": true, "reason": "Docker upgrade" }`. `204`. Maintainers and
+platform admins. Switching it on without a reason gets `400`.
 
 ### `GET /api/deployments/{id}`
 
@@ -184,11 +224,16 @@ For finished deployments the stored log is sent at once, followed by `end`.
 
 ### `DELETE /api/previews/{id}`
 
-`202`. Schedules the teardown of a preview.
+`202`. Schedules the teardown of a preview. Needs the deploy permission on
+the target, or a platform admin. For an orphaned preview (target no longer in
+the config) only platform admins may call it, and it only marks the preview as
+deleted; the namespace has to be removed by hand. `409` `code: "not_active"` if
+the preview is not active.
 
 ### `GET /api/admin/audit?before={id}` (platform admin)
 
 `AuditEvent[]`, 100 per page, newest first: `{ id, at, actor, action, object, details }`.
+Pass the smallest `id` of a page as `before` to get the next page.
 
 ### `GET /api/admin/previews` (platform admin)
 
@@ -199,9 +244,15 @@ All live previews including orphaned ones.
 - `GET /auth/login?return=/path` starts the OIDC login (authorization code with PKCE).
 - `GET /auth/callback` finishes it and sets the session cookie.
 - `POST /auth/logout` ends the session and returns `{ "logoutUrl": "..." }`, the
-  Keycloak end-session URL the UI navigates to.
+  Keycloak end-session URL the UI navigates to. It needs the
+  `X-Requested-With: simple-cd` header like the API.
 
 ### Other
 
-- `GET /healthz` liveness, `GET /readyz` readiness (database reachable).
-- `POST /webhooks/github` GitHub App webhook, verified by signature.
+- `GET /healthz` liveness, always `200 ok`.
+- `GET /readyz` readiness: `200 ok` when Postgres answers within 2 seconds, else `503`.
+- `POST /webhooks/github` GitHub App webhook, verified with
+  `X-Hub-Signature-256`. `202` for `workflow_run` and `pull_request` (processed
+  in the background), `204` for other events, `401` for a bad signature.
+  Bodies up to 5 MiB.
+- Every other path serves the UI; unknown paths get the UI's `index.html`.

@@ -1,3 +1,8 @@
+---
+title: Design record (German)
+nav_order: 8
+---
+
 # CD-Server - Design
 
 Stand: 2026-11-20 (nach Grilling)
@@ -152,7 +157,7 @@ Vor dem Deploy zeigt die UI den Diff der zusammengeführten Values (ohne Vault-S
 
 - Ein Compose-Target überträgt genau eine Datei. Wer mehr braucht, nimmt Ansible.
 - Config-Dateien und Secrets liegen bereits auf der VM (`.env` und Weiteres).
-- Der Executor schreibt die Image-Digests in eine eigene `.cd.env` und ruft `docker compose --env-file .env --env-file .cd.env pull` und danach `up -d` auf.
+- Der Executor schreibt die Image-Digests in eine eigene `.cd.env` und ruft per SSH auf der VM `docker compose --env-file .env --env-file .cd.env pull` und danach `up -d` auf.
 - Durch Digests statt Tags läuft garantiert genau die neue Variante.
 - Vor dem Deploy zeigt die UI den Diff der Compose-Datei gegenüber dem letzten erfolgreichen Deploy und verlangt bei Änderung eine Bestätigung.
 
@@ -252,7 +257,7 @@ Wer während der Wartung deployen will, beendet sie zuerst.
 ## Deploy-Slots und Parallelität
 
 - Ein Slot ist bei normalen Targets das Target selbst, bei Preview-Targets das Paar aus Target und PR.
-- Pro Slot läuft höchstens ein Deploy: `UNIQUE (target_id, slot) WHERE status = 'running'`.
+- Pro Slot läuft höchstens ein Deploy: `UNIQUE (target_id, slot) WHERE status IN ('pending', 'running')`.
 - Auto-Deploy hat einen Warteplatz pro Slot. Ein neuer Auftrag ersetzt einen wartenden, der neueste gewinnt.
 - Manuelle Deploys auf einen belegten Slot werden abgelehnt.
 
@@ -289,7 +294,7 @@ Rollen für neue Repos werden v1 von Hand angelegt, mit einem Skript (`kcadm.sh`
 - Ein Go-Binary im Job meldet sich per Vault-Kubernetes-Auth an, liest nur die Pfade seines Targets und legt sie in ein `emptyDir` mit `medium: Memory`.
 - Secrets landen nie in etcd, und der Server selbst hat keinen Lesezugriff darauf.
 - v1: eine Vault-Rolle für alle Executor-Jobs, beschränkt auf `secret/cd/*`. Eine Rolle pro Target erst bei Bedarf.
-- Zwei Images: `executor` (helm, ssh, docker CLI) und `executor-ansible`.
+- Zwei Images: `executor` (helm, kubectl, ssh) und `executor-ansible` (ansible-core, git, ssh). Eine Docker-CLI braucht der Executor nicht: `docker compose` läuft per SSH auf der VM.
 - Überschreitet ein Job `jobTimeout`, bricht der Server ihn ab (`timed_out`).
 
 ## Rechte in Ziel-Clustern
