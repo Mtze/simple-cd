@@ -15,6 +15,22 @@ This section is for people who change simple-cd itself.
 
 The [Architecture](../architecture/index.md) section has the UML diagrams, and the [design record](../design.md) (German) explains why things are the way they are.
 
+## Working with coding agents
+
+[`AGENTS.md`](https://github.com/Mtze/simple-cd/blob/main/AGENTS.md) in the repository root tells coding agents how the repository is laid out, which commands to run, the rules below and the security invariants; `CLAUDE.md` imports it for Claude Code.
+`.claude/skills/` holds step-by-step skills for recurring work:
+
+| Skill | For |
+|---|---|
+| `verify-change` | every check CI runs, with the database, and the definition of done |
+| `e2e` | starting, debugging and extending the end-to-end test |
+| `security-invariants` | the checklist for changes at trust boundaries |
+| `architecture-diagrams` | the hand-placed UML views and the PlantUML diagrams |
+| `screenshots` | refreshing the UI screenshots |
+| `release` | cutting a release |
+
+Keep them in sync when a command, a convention or a security property changes.
+
 ## Conventions
 
 - **Keep it small.** simple-cd has few dependencies on purpose: the Go server uses the standard library plus `pgx`, `go-oidc`, `oauth2` and `yaml`. It talks to Kubernetes, Vault, GitHub and registries over plain HTTP instead of their SDKs. The UI uses React and nothing else at runtime. Add a dependency only when a few lines of code cannot replace it.

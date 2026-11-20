@@ -74,11 +74,14 @@ A deploy starts a Kubernetes Job that logs in to Vault and runs `helm`, `docker 
     helm-version: ${{ steps.chart.outputs.version }}
 ```
 
-## Quick start (development)
+## Quick start
+
+### Try it locally
 
 Needs Go, Node.js 26 and Docker.
 
 ```sh
+git clone https://github.com/Mtze/simple-cd.git && cd simple-cd
 make dev-up     # Postgres and Keycloak on 127.0.0.1
 make dev-seed   # demo data
 make web        # build the UI
@@ -87,6 +90,51 @@ make run        # server on http://127.0.0.1:8080
 
 Log in as `alice`, `bob`, `mia`, `root` or `guest`, password `dev`.
 Details in [Local development](https://mtze.me/simple-cd/contributors/development.html).
+`make e2e-up` starts the whole stack with Vault, a registry and real deployments in a kind cluster, see [End-to-end test](https://mtze.me/simple-cd/contributors/testing.html#end-to-end-test).
+
+### Install on Kubernetes
+
+You need a Kubernetes cluster with a [Gateway API](https://gateway-api.sigs.k8s.io/) Gateway, PostgreSQL, a [Keycloak client](https://mtze.me/simple-cd/admin/keycloak.html), a [GitHub App](https://mtze.me/simple-cd/admin/github-app.html) and [Vault](https://mtze.me/simple-cd/admin/vault.html) with Kubernetes auth.
+
+1. Create the Secret with the database URL, the OIDC client secret and the GitHub App key and webhook secret:
+
+   ```sh
+   kubectl create namespace simple-cd
+   kubectl -n simple-cd create secret generic simple-cd \
+     --from-literal=database-url='postgres://simplecd:...@db.example.org:5432/simplecd?sslmode=require' \
+     --from-literal=oidc-client-secret='...' \
+     --from-file=github-private-key=simple-cd.private-key.pem \
+     --from-literal=github-webhook-secret='...'
+   ```
+
+2. Write `values.yaml`:
+
+   ```yaml
+   baseURL: https://cd.example.org
+   github: {appID: "123456"}
+   oidc: {issuer: https://keycloak.example.org/realms/main}
+   vault: {address: https://vault.example.org}
+   httpRoute:
+     enabled: true
+     parentRefs: [{name: public, namespace: gateway-system}]
+     hostnames: [cd.example.org]
+   config:
+     defaults: {registries: [ghcr.io/example/]}
+     targets:
+       - {id: app-test, project: example/app, type: helm, cluster: "vault:secret/cd/clusters/test", namespace: app}
+   ```
+
+3. Install the chart from a checkout. There is no release yet, so use the `edge` images built from `main` (or a `sha-<commit>` tag):
+
+   ```sh
+   git clone https://github.com/Mtze/simple-cd.git
+   helm upgrade --install simple-cd simple-cd/deploy/helm/simple-cd -n simple-cd \
+     -f values.yaml --set image.tag=edge --set executor.tag=edge
+   ```
+
+4. Connect a project: install the GitHub App on the repository, create its Keycloak roles, then add `.cd.yaml` and the `cd-publish` step to the workflow, see [Getting started](https://mtze.me/simple-cd/users/getting-started.html).
+
+The full guide with every value is [Installation](https://mtze.me/simple-cd/admin/installation.html); the setup order is in [Administrators](https://mtze.me/simple-cd/admin/).
 
 ## Documentation
 

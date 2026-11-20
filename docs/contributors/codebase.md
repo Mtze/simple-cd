@@ -26,6 +26,7 @@ nav_order: 2
 | `docs/` | this site (Jekyll, just-the-docs), the draw.io UML views in `docs/architecture/uml` and the PlantUML dynamic views |
 | `.github/workflows/` | CI, image builds and the docs deployment |
 | `Makefile` | common tasks, `make help` lists them |
+| `AGENTS.md`, `CLAUDE.md`, `.claude/skills/` | instructions and step-by-step skills for coding agents, see [Working with coding agents](index.md#working-with-coding-agents) |
 
 ## Packages
 
@@ -41,7 +42,7 @@ The [component diagram](../architecture/index.md#components) shows the same from
 | `ingest` | handles `workflow_run` and `pull_request` webhooks: rejects forks and unknown repositories, downloads `deploy.json`, derives the source, snapshots `.cd.yaml` and the files it names, checks the registry, stores the artifact and triggers auto-deploy |
 | `github` | the GitHub App client: webhook signature check, App JWT, cached installation tokens, artifact download, file reads, PR lookup, tag check, and the `Reporter` that mirrors deployments to GitHub |
 | `registry` | checks that a digest or chart version exists in an OCI registry with `HEAD /v2/<repo>/manifests/<ref>`, following the token flow; reads credentials from a Docker `config.json` |
-| `auth` | Keycloak login: authorization code flow with PKCE, nonce and one-time state, sessions in Postgres keyed by the SHA-256 of the cookie, RP-initiated logout, the middleware that loads the user |
+| `auth` | Keycloak login: authorization code flow with PKCE, nonce and one-time state in a per-login cookie, sessions in Postgres keyed by the SHA-256 of the cookie, RP-initiated logout, the middleware that loads the user |
 | `api` | the HTTP server: JSON API, SSE log stream, webhook endpoint, login routes, health checks, the embedded UI, security headers and CSRF protection. `views.go` shapes the JSON. |
 | `worker` | background work on the leader replica (Postgres advisory lock): start pending deployments, watch running Jobs, enforce timeouts, store logs, report to GitHub, process the waiting place, retry preview teardowns, apply retention |
 | `runner` | starts and watches executor runs. `Kube` creates Jobs over the Kubernetes REST API (no client-go); `Process` runs the executor as a local process for development. |

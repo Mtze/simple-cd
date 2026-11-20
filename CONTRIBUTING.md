@@ -16,4 +16,6 @@ In short:
 4. Update the docs in `docs/` and the **Unreleased** section of `CHANGELOG.md` in the same pull request.
 5. Write in active voice and present tense, and use plain hyphens, never em or en dashes.
 
+Coding agents read [AGENTS.md](AGENTS.md) and the skills in `.claude/skills/`.
+
 Report security issues privately, see [SECURITY.md](SECURITY.md).
