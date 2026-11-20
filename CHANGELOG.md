@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-20
+
 ### Added
 
 - Delivery server in Go with an embedded React UI.
@@ -26,7 +28,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - End-to-end test in a kind cluster with Vault, Keycloak, a local registry and a fake GitHub API (`make e2e-up e2e`), run in CI.
 - Docs page "Why simple-cd" with the intended users, reasons, limits and a sourced comparison to Argo CD, Flux, Kargo, Spinnaker, Octopus Deploy, GitHub and GitLab environments, Semaphore UI, Kamal, Coolify and Harness; a short version in the README.
 - Screenshots of the UI in light and dark, in the README and the user and admin docs, taken with `make screenshots`.
-- README quick start: try it locally, and install on Kubernetes in four steps with the `edge` images until the first release.
+- README quick start: try it locally, and install on Kubernetes in four steps.
 - `AGENTS.md` (imported by `CLAUDE.md`) with the map, commands, rules and security invariants for coding agents, and project skills in `.claude/skills/`: `verify-change`, `e2e`, `security-invariants`, `architecture-diagrams`, `screenshots` and `release`.
 
 ### Changed

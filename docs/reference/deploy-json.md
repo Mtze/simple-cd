@@ -48,7 +48,7 @@ The repository, commit, source and pull request number are not part of `deploy.j
 
 ## cd-publish inputs
 
-Use the action as `Mtze/simple-cd/cd-publish@main` or pin it to a release tag or commit SHA.
+Pin the action to a release tag (`Mtze/simple-cd/cd-publish@v0.1.0`) or a commit SHA; `@main` runs whatever is on `main` of this repository.
 
 | Input | Default | Meaning |
 |---|---|---|
@@ -62,7 +62,7 @@ The action validates every value at least as strictly as the server, fails the s
 
 {% raw %}
 ```yaml
-- uses: Mtze/simple-cd/cd-publish@main
+- uses: Mtze/simple-cd/cd-publish@v0.1.0
   with:
     images: |
       server=ghcr.io/example/app-server@${{ steps.server.outputs.digest }}

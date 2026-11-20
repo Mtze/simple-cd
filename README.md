@@ -67,7 +67,7 @@ A deploy starts a Kubernetes Job that logs in to Vault and runs `helm`, `docker 
 
 ```yaml
 # .github/workflows/build.yml (excerpt)
-- uses: Mtze/simple-cd/cd-publish@main
+- uses: Mtze/simple-cd/cd-publish@v0.1.0
   with:
     images: |
       server=ghcr.io/example/app-server@${{ steps.server.outputs.digest }}
@@ -124,12 +124,11 @@ You need a Kubernetes cluster with a [Gateway API](https://gateway-api.sigs.k8s.
        - {id: app-test, project: example/app, type: helm, cluster: "vault:secret/cd/clusters/test", namespace: app}
    ```
 
-3. Install the chart from a checkout. There is no release yet, so use the `edge` images built from `main` (or a `sha-<commit>` tag):
+3. Install the chart from a checkout of the release tag; the chart uses the images of that release:
 
    ```sh
-   git clone https://github.com/Mtze/simple-cd.git
-   helm upgrade --install simple-cd simple-cd/deploy/helm/simple-cd -n simple-cd \
-     -f values.yaml --set image.tag=edge --set executor.tag=edge
+   git clone --branch v0.1.0 https://github.com/Mtze/simple-cd.git
+   helm upgrade --install simple-cd simple-cd/deploy/helm/simple-cd -n simple-cd -f values.yaml
    ```
 
 4. Connect a project: install the GitHub App on the repository, create its Keycloak roles, then add `.cd.yaml` and the `cd-publish` step to the workflow, see [Getting started](https://mtze.me/simple-cd/users/getting-started.html).

@@ -145,7 +145,7 @@ jobs:
           helm push "$RUNNER_TEMP/chart/app-$version.tgz" oci://ghcr.io/example/charts
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
-      - uses: Mtze/simple-cd/cd-publish@main
+      - uses: Mtze/simple-cd/cd-publish@v0.1.0
         with:
           images: |
             server=ghcr.io/example/app-server@${{ steps.server.outputs.digest }}

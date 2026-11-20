@@ -115,17 +115,16 @@ config:
       namespace: app
 ```
 
-Install from a checkout of the repository:
+Install from a checkout of a release tag:
 
 ```sh
-git clone https://github.com/Mtze/simple-cd.git
+git clone --branch v0.1.0 https://github.com/Mtze/simple-cd.git
 helm upgrade --install simple-cd simple-cd/deploy/helm/simple-cd \
   --namespace simple-cd --values my-values.yaml
 ```
 
-Pin `image.tag` and `executor.tag` to a release (for example `0.1.0`) instead of relying on the chart's `appVersion` when you track `main`.
-Until the first release is tagged, only the images built from `main` exist: `edge` (the latest commit) and `sha-<commit>` (one commit, the better choice to pin).
-Install with `--set image.tag=edge --set executor.tag=edge` or the `sha-` tag; the chart's default `appVersion` tag does not exist yet.
+The chart's `appVersion` is the default tag of all three images, so a checkout of a tag installs the images of that release.
+To run a build of `main` instead, set `image.tag` and `executor.tag` to `edge` (the latest commit) or `sha-<commit>` (one commit).
 
 ## What the chart creates
 
