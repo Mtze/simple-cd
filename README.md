@@ -27,11 +27,13 @@ simple-cd sees the artifacts they publish, checks that they are complete, and le
 
 ## Screenshots
 
+The UI follows the system theme; GitHub shows the screenshots in the theme you use.
+
 | Deploy with a configuration diff | Live executor log |
 |---|---|
-| ![Deploy dialog showing the Helm values diff and the confirmation checkbox](docs/assets/screenshots/deploy-dialog.png) | ![Deployment page with the log of helm upgrade](docs/assets/screenshots/deployment.png) |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/screenshots/deploy-dialog-dark.png"><img alt="Deploy dialog showing the Helm values diff and the confirmation checkbox" src="docs/assets/screenshots/deploy-dialog.png"></picture> | <picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/screenshots/deployment-dark.png"><img alt="Deployment page with the log of helm upgrade" src="docs/assets/screenshots/deployment.png"></picture> |
 | **A locked target with its history** | **User menu with roles and theme** |
-| ![Target page showing the lock holder, deployments and lock history](docs/assets/screenshots/target.png) | ![User menu with name, roles, theme switch and logout](docs/assets/screenshots/user-menu.png) |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/screenshots/target-dark.png"><img alt="Target page showing the lock holder, deployments and lock history" src="docs/assets/screenshots/target.png"></picture> | <picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/screenshots/user-menu-dark.png"><img alt="User menu with name, roles, theme switch and logout" src="docs/assets/screenshots/user-menu.png"></picture> |
 
 ## How it works
 

@@ -1,13 +1,13 @@
 /* Design tokens. Light is the default; dark applies via data-theme or the OS setting. */
 :root {
   color-scheme: light;
-  --bg: #f6f7f9;
+  --bg: #e9ecf1;
   --surface: #ffffff;
-  --surface-2: #f0f2f5;
-  --border: #e2e5ea;
-  --border-strong: #cdd2da;
+  --surface-2: #f1f3f6;
+  --border: #d3d8e0;
+  --border-strong: #b4bcc8;
   --text: #15181d;
-  --text-muted: #5a6371;
+  --text-muted: #4b5462;
   --accent: #0e7490;
   --accent-hover: #0b5f76;
   --on-accent: #ffffff;
@@ -28,6 +28,7 @@
   --radius: 8px;
   --radius-sm: 6px;
   --shadow-pop: 0 8px 28px rgb(15 20 30 / 0.14), 0 1px 3px rgb(15 20 30 / 0.08);
+  --shadow-card: 0 1px 2px rgb(15 20 30 / 0.06), 0 1px 4px rgb(15 20 30 / 0.04);
   --font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
 }
@@ -54,6 +55,7 @@
     --red: #f87171;
     --gray: #9ba5b3;
     --shadow-pop: 0 10px 30px rgb(0 0 0 / 0.5), 0 1px 3px rgb(0 0 0 / 0.4);
+    --shadow-card: none;
   }
 }
 
@@ -78,6 +80,7 @@
   --red: #f87171;
   --gray: #9ba5b3;
   --shadow-pop: 0 10px 30px rgb(0 0 0 / 0.5), 0 1px 3px rgb(0 0 0 / 0.4);
+  --shadow-card: none;
 }
 
 /* Base */
@@ -373,6 +376,7 @@ svg { flex-shrink: 0; vertical-align: -0.15em; }
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
   padding: 16px;
   min-width: 0;
 }
@@ -668,16 +672,20 @@ h1.target-title { font-size: 22px; }
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 6px;
   align-content: start;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
 }
 .readiness-row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 8px;
   flex-wrap: wrap;
   font-size: 13px;
+  padding: 6px 10px;
 }
+.readiness-row + .readiness-row { border-top: 1px solid var(--border); }
 .readiness-row .btn { margin-left: auto; }
 .ready {
   display: inline-flex;
@@ -713,6 +721,7 @@ h1.target-title { font-size: 22px; }
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
+  box-shadow: var(--shadow-card);
 }
 .table {
   width: 100%;
@@ -755,6 +764,7 @@ details > summary { cursor: pointer; }
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
+  box-shadow: var(--shadow-card);
 }
 .timeline li {
   display: flex;

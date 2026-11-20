@@ -85,6 +85,19 @@ func main() {
 		st.Finish(ctx, d.ID, h.status, h.log, map[bool]string{true: "", false: "helm exited with status 1"}[h.status == store.StatusSucceeded])
 	}
 	st.TouchPreview(ctx, repo, 12, "demo-previews", "pr-demo-12", time.Now().Add(30*time.Hour))
+	// alice holds the lock on demo-test, so the UI shows a locked target.
+	err = st.WithTx(ctx, func(tx *store.Store) error {
+		ts, err := tx.LockTargetState(ctx, "demo-test")
+		if err != nil {
+			return err
+		}
+		until := time.Now().Add(time.Hour)
+		ts.LockHolder, ts.LockUntil = "alice", &until
+		return tx.SaveTargetState(ctx, ts)
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
 	st.Audit(ctx, "seed", "dev.seed", repo, nil)
 	fmt.Println("seeded", repo)
 }

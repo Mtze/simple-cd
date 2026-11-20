@@ -5,7 +5,7 @@ BASE_URL ?= http://127.0.0.1:8080
 KIND_VERSION := v0.33.0
 KIND := $(CURDIR)/bin/kind
 
-.PHONY: help build web test test-go test-web lint dev-up dev-down dev-seed run e2e-up e2e e2e-down
+.PHONY: help build web test test-go test-web lint dev-up dev-down dev-seed run e2e-up e2e e2e-down screenshots
 
 help: ## Show this help
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-10s %s\n", $$1, $$2}'
@@ -65,3 +65,6 @@ e2e: ## Run the end-to-end test against the environment from e2e-up
 
 e2e-down: $(KIND) ## Delete the end-to-end environment
 	KIND=$(KIND) e2e/down.sh
+
+screenshots: ## Screenshots for the docs, needs the dev stack (dev-up dev-seed run) and e2e-up e2e
+	cd web && npm ci && npm run screenshots

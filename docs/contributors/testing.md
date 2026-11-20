@@ -108,6 +108,18 @@ python3 docs/architecture/uml/diagrams.py   # structural UML views (needs the dr
 docs/architecture/diagrams/render.sh       # sequence and state diagrams (PlantUML in Docker)
 ```
 
+### Screenshots
+
+The screenshots in `docs/assets/screenshots` come from `web/scripts/screenshots.mjs`, in light and dark (`-dark.png`):
+
+```sh
+make dev-up dev-seed run   # demo data, alice holds the lock on demo-test for one hour
+make e2e-up e2e            # a real deployment log and audit log
+make screenshots           # drives the installed Google Chrome with playwright-core
+```
+
+Retake them when the UI changes, and look at every image before you commit it.
+
 The docs site builds with GitHub Pages on every push to `main` that touches `docs/` (`.github/workflows/pages.yml`).
 To preview it locally, run the same Jekyll build in Docker:
 
