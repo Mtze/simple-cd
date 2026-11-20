@@ -1,27 +1,36 @@
 ---
-title: Data model
+title: Object model
 parent: Architecture
 nav_order: 1
 ---
 
-# Data model
+# Object model
+{: .no_toc }
 
-![UML class diagram of the simple-cd data model](diagrams/data-model.svg)
+1. TOC
+{:toc}
 
-The model has three parts.
+## Application domain
 
-**Target configuration** (top right).
-`Config` holds the `Defaults`, the `Project`s and the `Target`s.
-It is read from YAML and never changed by the server.
-A project owns its targets through the `project` field; a target may carry an `AutoDeploy` rule.
-Projects without an entry under `projects` exist implicitly through their targets.
+![UML class diagram of the simple-cd object model](uml/object-model.svg)
 
-**Repository input** (bottom left).
-Each artifact embeds the parsed `deploy.json` (`Manifest` with its `Image`s and optional `ManifestHelm` version) and the parsed `.cd.yaml` (`RepoConfig` with optional `HelmConfig`, `ComposeConfig` and `AnsibleConfig`).
-`HelmConfig` keeps a `HelmTarget` per target id for target-specific values files and `set` entries.
-Together with the `files` map (path to content) this snapshot makes an artifact independent of later changes in the repository.
+A **Project** is one GitHub repository; its members are **Users** with a project role (developer or maintainer).
+The project publishes **Artifacts**: one per commit, with its **Images** pinned by digest and an optional chart version.
+`Artifact.readiness(target)` lists why the artifact cannot go to a target; an empty list means it can.
 
-**Runtime state in Postgres** (middle).
+A **Target** belongs to exactly one project and has a kind (helm, compose or ansible).
+At any time it may have one **Lock** held by a User and one **Maintenance**; `Target.status()` combines them with running deployments into a single status (see [state machines](states.md)).
+An **AutoDeployRule** says which sources may deploy without a click.
+
+A **Deployment** brings an artifact to a target, or tears a **Preview** down.
+Preview targets host one preview per pull request; a deployment into a preview resets its TTL.
+
+## How it is stored
+
+The target configuration (projects, targets, auto-deploy rules) lives in a YAML file and never changes at runtime.
+Each artifact embeds the parsed `deploy.json` and `.cd.yaml` and a snapshot of the files they name, so it stays deployable when the repository changes later.
+Everything else is runtime state in Postgres:
+
 
 | Class | Table | Notes |
 |---|---|---|
@@ -34,5 +43,5 @@ Together with the `files` map (path to content) this snapshot makes an artifact 
 | `AuditEvent` | `audit_events` | who did what, with JSON details |
 | `Session` | `sessions` | login sessions, keyed by the SHA-256 of the cookie value |
 
-The links between runtime state and targets (dashed) are plain target ids, not foreign keys: the configuration lives in a file, and history survives when a target is removed.
+The links between runtime state and targets are plain target ids, not foreign keys: the configuration lives in a file, and history survives when a target is removed.
 Not shown: `auth_requests` (pending logins, valid for 10 minutes) and `schema_migrations`.

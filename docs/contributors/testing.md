@@ -63,7 +63,8 @@ helm template ci deploy/helm/simple-cd --set github.appID=1 --set ingress.enable
 ## Docs
 
 ```sh
-docs/architecture/diagrams/render.sh   # re-render the UML diagrams with Docker
+python3 docs/architecture/uml/diagrams.py   # structural UML views (needs the drawio CLI)
+docs/architecture/diagrams/render.sh       # sequence and state diagrams (PlantUML in Docker)
 ```
 
 The docs site builds with GitHub Pages on every push to `main` that touches `docs/` (`.github/workflows/pages.yml`).

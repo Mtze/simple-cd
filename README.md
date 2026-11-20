@@ -22,7 +22,7 @@ simple-cd sees the artifacts they publish, checks that they are complete, and le
 
 ## How it works
 
-![simple-cd components](docs/architecture/diagrams/component.svg)
+![simple-cd components](docs/architecture/uml/components-server.svg)
 
 A workflow builds images and a chart and runs the [`cd-publish`](cd-publish/action.yml) action, which uploads `deploy.json` with the image digests.
 The simple-cd GitHub App receives the `workflow_run` webhook, reads `deploy.json` and `.cd.yaml` at the commit and stores the artifact.

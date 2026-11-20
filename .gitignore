@@ -8,3 +8,4 @@ coverage.out
 .env
 .DS_Store
 /dev/github-app-dev.pem
+__pycache__/

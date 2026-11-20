@@ -24,4 +24,4 @@ The [Architecture](../architecture/index.md) section has the UML diagrams, and t
 - **Writing style.** Active voice, present tense, short sentences. No em dashes or en dashes anywhere, use a plain hyphen. Say "UI" and "server".
 - **Formatting.** `gofmt` and `go vet` must be clean (`make lint`); the UI must pass `npm run typecheck`.
 - **Docs with the change.** Update the docs in `docs/`, the API reference and the changelog in the same pull request.
-- **Diagrams.** Edit the `.puml` sources in `docs/architecture/diagrams/`, run `render.sh` and commit the `.svg` files with them.
+- **Diagrams.** Structural views (object model, components, deployment, service specs) are hand-placed: change the coordinates in `docs/architecture/uml/diagrams.py`, run it and look at every preview before committing. Sequence and state diagrams are PlantUML in `docs/architecture/diagrams/` (`render.sh`). Commit sources and `.svg` files together. Record decisions about structure, technology or protocols as an [ADR](../adr/).

@@ -22,7 +22,7 @@ nav_order: 2
 | `deploy/helm/simple-cd` | the Helm chart of simple-cd |
 | `build/` | Dockerfiles of the server and the two executor images |
 | `dev/` | local stack: `compose.yaml` (Postgres, Keycloak), `keycloak-realm.json`, `config.yaml`, `seed/` |
-| `docs/` | this site (Jekyll, just-the-docs) and the PlantUML diagrams |
+| `docs/` | this site (Jekyll, just-the-docs), the draw.io UML views in `docs/architecture/uml` and the PlantUML dynamic views |
 | `.github/workflows/` | CI, image builds and the docs deployment |
 | `Makefile` | common tasks, `make help` lists them |
 

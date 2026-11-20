@@ -41,3 +41,5 @@ exclude:
   - architecture/diagrams/*.puml
   - architecture/diagrams/*.iuml
   - architecture/diagrams/render.sh
+  - architecture/uml/*.py
+  - architecture/uml/__pycache__

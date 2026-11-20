@@ -30,7 +30,7 @@ It sees the artifacts your workflows publish, checks that they are complete, and
 
 ## How it fits together
 
-![simple-cd components](architecture/diagrams/component.svg)
+![simple-cd components](architecture/uml/components-server.svg)
 
 1. Your workflow builds images and a chart and pushes them to a registry.
 2. The [`cd-publish` action](reference/deploy-json.md) writes `deploy.json` (image digests, chart version) and uploads it as the workflow artifact `cd-deploy`.
