@@ -184,8 +184,11 @@ func serve() error {
 	}
 	go w.Run(ctx)
 
+	events := &api.Hub{}
+	go st.Listen(ctx, events.Publish)
+
 	srv := &api.Server{
-		Store: st, Config: cfg, Core: svc, Auth: authn, Runner: run, BaseURL: baseURL,
+		Store: st, Config: cfg, Core: svc, Auth: authn, Runner: run, BaseURL: baseURL, Events: events,
 		WebhookSecret: []byte(env("SIMPLECD_GITHUB_WEBHOOK_SECRET", "")), UI: web.Dist(),
 		Ingest: &ingest.Ingester{Config: cfg, Store: st, Core: svc, Registry: checker,
 			GitHub: func(id int64) ingest.RepoAPI { return app.Client(id) }},

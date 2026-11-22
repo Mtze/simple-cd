@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { api } from '../api/client';
-import type { Artifact, Source, Target } from '../api/types';
+import type { Artifact, ChangeEvent, Source, Target } from '../api/types';
 import { ArtifactRef, ErrorBox, Loading, RelTime } from '../components/common';
 import { DeployDialog } from '../components/DeployDialog';
 import { CheckIcon, CrossIcon, ExternalIcon, WarningIcon } from '../components/icons';
@@ -15,9 +15,13 @@ const SOURCES: { id: Source; label: string }[] = [
   { id: 'release', label: 'Releases' },
 ];
 
+// GitHub names are case-insensitive, and the server uses the configured spelling.
+const artifactsOf = (name: string) => (e: ChangeEvent) =>
+  e.kind === 'artifacts' && e.project.toLowerCase() === name.toLowerCase();
+
 export function ProjectPage({ owner, repo }: { owner: string; repo: string }) {
   const name = `${owner}/${repo}`;
-  const project = useApi(`project:${name}`, () => api.project(name), 30000);
+  const project = useApi(`project:${name}`, () => api.project(name), 30000, artifactsOf(name));
 
   if (!project.data) {
     return <div className="page">{project.error ? <ErrorBox error={project.error} /> : <Loading />}</div>;
@@ -59,7 +63,7 @@ function Artifacts({ name, targets }: { name: string; targets: Target[] }) {
   const { pathname, search } = useLocation();
   const source = (SOURCES.find((s) => s.id === search.get('source'))?.id ?? 'pr') as Source;
   const closed = search.get('closed') === 'true';
-  const list = useApi(`artifacts:${name}:${source}:${closed}`, () => api.artifacts(name, source, closed), 30000);
+  const list = useApi(`artifacts:${name}:${source}:${closed}`, () => api.artifacts(name, source, closed), 30000, artifactsOf(name));
   const [deploying, setDeploying] = useState<{ target: Target; artifact: Artifact } | null>(null);
 
   const setQuery = (key: string, value: string | null) => {

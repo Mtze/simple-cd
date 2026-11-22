@@ -160,7 +160,7 @@ spec:
         namespaces: {from: All}
 ```
 
-The deployment log in the UI is a Server-Sent Events stream that stays open while a deployment runs.
+The deployment log and the live updates (`/api/events`) in the UI are Server-Sent Events streams; the log stays open while a deployment runs, the updates as long as the page is open, with a keepalive every 25 seconds.
 If your Gateway implementation limits request duration or idle time, allow at least the longest job timeout of your targets.
 
 ## Check the installation

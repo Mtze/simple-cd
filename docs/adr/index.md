@@ -22,5 +22,6 @@ The [design record](../design.md) (German) holds the discussion that led to them
 | [0008](0008-digests-and-registry-allowlist.md) | Images pinned by digest, registries on an allowlist | Accepted |
 | [0009](0009-hand-placed-structural-diagrams.md) | Hand-placed draw.io diagrams for structural views | Accepted |
 | [0010](0010-gateway-api-httproute.md) | Gateway API HTTPRoute instead of Ingress | Accepted |
+| [0011](0011-live-updates-postgres-notify.md) | Live UI updates through Postgres NOTIFY and Server-Sent Events | Accepted |
 
 New records use the next number and the same sections: Status, Date, Context, Decision, Consequences.

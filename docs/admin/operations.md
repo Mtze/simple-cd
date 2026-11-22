@@ -88,6 +88,7 @@ Webhooks that arrive while a pod shuts down may be lost; redeliver them from the
 - All replicas serve the UI, the API and webhooks.
 - Background work (starting and watching Jobs, waiting auto-deploys, preview TTLs and retries, retention) runs on exactly one replica, the leader, chosen with a Postgres advisory lock. When the leader dies, another replica takes over within seconds.
 - Two replicas are enough for availability. More replicas only add API capacity.
+- Live updates in the UI work across replicas: the replica that stores an artifact sends a Postgres `NOTIFY`, and every replica pushes it to its open `/api/events` streams. Each replica keeps one extra database connection for this `LISTEN`.
 - The `process` runner keeps state in memory and supports a single replica only. It is for local development.
 
 ## Health checks
@@ -114,6 +115,7 @@ Useful messages:
 | `config reloaded`, `config reload failed, keeping previous config` | configuration reload |
 | `artifact stored`, `ignoring workflow run of unknown repository` | webhook processing |
 | `webhook processing failed` | a webhook could not be processed, with the delivery id |
+| `change event listener stopped, reconnecting` | the `LISTEN` connection for live updates broke; the UI falls back to polling until it is back |
 | `auto-deploy skipped` | with target and reason |
 | `registry checks are off` | `SIMPLECD_REGISTRY_CHECK=off`, never in production |
 | `registry is reached over plain http` | `SIMPLECD_REGISTRY_PLAIN_HTTP` is set, never in production |

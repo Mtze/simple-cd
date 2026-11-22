@@ -208,6 +208,16 @@ is not locked is a no-op.
 Body `{ "enabled": true, "reason": "Docker upgrade" }`. `204`. Maintainers and
 platform admins. Switching it on without a reason gets `400`.
 
+### `GET /api/events`
+
+Server-Sent Events that tell the UI to reload, so new builds show up without waiting for the next poll:
+
+- `event: change` - `data` is `{"kind": "artifacts", "project": "<owner>/<repo>"}`: the artifact list of the project changed (a new build, a newer run of a commit, or a closed pull request).
+
+The stream starts with the comment `: connected` and sends `: keepalive` every 25 seconds.
+Events carry no data beyond the project name; the UI reloads through the normal endpoints.
+A slow reader may miss events, and none are replayed after a reconnect, so clients keep polling as a fallback.
+
 ### `GET /api/deployments/{id}`
 
 `Deployment` with `artifact` and `target: Target`.

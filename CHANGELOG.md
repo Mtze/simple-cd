@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Live updates: the project page reloads its artifacts as soon as a new build arrives, through `GET /api/events` (Server-Sent Events) fed by Postgres `NOTIFY`, so it works across replicas. Polling stays as a fallback.
+
 ## [0.1.0] - 2026-11-20
 
 ### Added

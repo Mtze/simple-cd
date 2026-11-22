@@ -46,6 +46,7 @@ type Server struct {
 	WebhookSecret []byte
 	BaseURL       string // public URL, used for the Origin check and HSTS
 	UI            fs.FS  // built UI; nil serves a placeholder
+	Events        *Hub   // change events for /api/events
 }
 
 func (s *Server) Handler() http.Handler {
@@ -53,6 +54,7 @@ func (s *Server) Handler() http.Handler {
 	api := http.NewServeMux()
 
 	api.HandleFunc("GET /api/me", s.me)
+	api.HandleFunc("GET /api/events", s.events)
 	api.HandleFunc("GET /api/projects", s.projects)
 	api.HandleFunc("GET /api/projects/{owner}/{repo}", s.project)
 	api.HandleFunc("GET /api/projects/{owner}/{repo}/artifacts", s.artifacts)

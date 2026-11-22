@@ -1,9 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { ChangeEvent } from '../api/types';
+import { onChange } from './events';
 
 type State<T> = { key: string | null; data?: T; error?: unknown; loading: boolean };
 
-// Loads data for `key`; data from a previous key is never returned. With pollMs it refreshes quietly.
-export function useApi<T>(key: string | null, load: () => Promise<T>, pollMs?: number) {
+// Loads data for `key`; data from a previous key is never returned. With pollMs it refreshes quietly,
+// and right away when a server change event matches refreshOn.
+export function useApi<T>(
+  key: string | null,
+  load: () => Promise<T>,
+  pollMs?: number,
+  refreshOn?: (e: ChangeEvent) => boolean,
+) {
   const [state, setState] = useState<State<T>>({ key: null, loading: true });
   const [tick, setTick] = useState(0);
 
@@ -26,6 +34,14 @@ export function useApi<T>(key: string | null, load: () => Promise<T>, pollMs?: n
     const id = setInterval(() => setTick((t) => t + 1), pollMs);
     return () => clearInterval(id);
   }, [pollMs]);
+
+  useEffect(() => {
+    if (key === null || !refreshOn) return;
+    return onChange((e) => {
+      if (refreshOn(e)) setTick((t) => t + 1);
+    });
+    // refreshOn is recreated each render; it only depends on what key encodes
+  }, [key]);
 
   const reload = useCallback(() => setTick((t) => t + 1), []);
   const current = state.key === key;

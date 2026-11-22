@@ -69,6 +69,7 @@ func (s *Store) UpsertArtifact(ctx context.Context, a *Artifact) (*Artifact, boo
 		return nil, false, err
 	}
 	if len(got) == 1 {
+		s.notify(ctx, Event{Kind: EventArtifacts, Project: a.Repo})
 		return got[0], true, nil
 	}
 	existing, err := s.ArtifactBySHA(ctx, a.Repo, a.SHA)
@@ -113,6 +114,9 @@ func (s *Store) ListArtifacts(ctx context.Context, repo string, f ArtifactFilter
 
 func (s *Store) MarkPRClosed(ctx context.Context, repo string, pr int) error {
 	_, err := s.db.Exec(ctx, `UPDATE artifacts SET pr_closed = true WHERE repo = $1 AND pr = $2`, repo, pr)
+	if err == nil {
+		s.notify(ctx, Event{Kind: EventArtifacts, Project: repo})
+	}
 	return err
 }
 

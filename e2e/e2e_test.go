@@ -81,12 +81,21 @@ func TestDelivery(t *testing.T) {
 
 	var mainArtifact int64
 	t.Run("ingest a main build", func(t *testing.T) {
+		// Several streams, so they spread over both replicas behind the NodePort:
+		// the event must reach a browser on a replica that did not get the webhook.
+		var streams []*bufio.Reader
+		for range 4 {
+			streams = append(streams, eventStream(t, c))
+		}
 		publish(t, run{ID: runID(1), SHA: sha(1), Image: image, Event: "push", Branch: "main"})
 		a := waitArtifact(t, c, sha(1))
 		if r := a.Readiness["e2e-test"]; len(r) != 0 {
 			t.Fatalf("artifact not deployable to e2e-test: %v", r)
 		}
 		mainArtifact = a.ID
+		for i, rd := range streams {
+			waitChange(t, rd, i)
+		}
 	})
 
 	t.Run("registry check finds a missing image", func(t *testing.T) {
@@ -201,6 +210,42 @@ func api(t *testing.T, c *http.Client, method, path string, body, out any, want 
 }
 
 // followLog reads the log stream until the deployment ends.
+// eventStream opens GET /api/events and waits until it is subscribed.
+func eventStream(t *testing.T, c *http.Client) *bufio.Reader {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	t.Cleanup(cancel)
+	req, _ := http.NewRequestWithContext(ctx, "GET", server+"/api/events", nil)
+	resp, err := (&http.Client{Jar: c.Jar}).Do(req) // no client timeout, the context bounds it
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { resp.Body.Close() })
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /api/events: %s", resp.Status)
+	}
+	rd := bufio.NewReader(resp.Body)
+	if l, err := rd.ReadString('\n'); err != nil || l != ": connected\n" {
+		t.Fatalf("event stream did not start: %q %v", l, err)
+	}
+	return rd
+}
+
+// waitChange reads stream i until the artifacts of the project changed.
+func waitChange(t *testing.T, rd *bufio.Reader, i int) {
+	t.Helper()
+	want := `data: {"kind":"artifacts","project":"` + repo + `"}`
+	for {
+		l, err := rd.ReadString('\n')
+		if err != nil {
+			t.Fatalf("stream %d ended without a change event: %v", i, err)
+		}
+		if strings.TrimSuffix(l, "\n") == want {
+			return
+		}
+	}
+}
+
 func followLog(t *testing.T, c *http.Client, id int64) (status, log string) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Minute)

@@ -3,6 +3,7 @@ package store_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -175,4 +176,44 @@ func TestSessionsAndAudit(t *testing.T) {
 	if len(ev) != 1 || ev[0].Actor != "alice" {
 		t.Fatal("audit missing")
 	}
+}
+
+func TestChangeEvents(t *testing.T) {
+	s := storetest.New(t)
+	lctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	got := make(chan store.Event, 100)
+	go s.Listen(lctx, func(e store.Event) { got <- e })
+	// The channel is shared by the whole database, so look for this test's project only.
+	repo := fmt.Sprintf("org/events-%d", time.Now().UnixNano())
+	wait := func(what string, send func()) {
+		t.Helper()
+		tick := time.NewTicker(200 * time.Millisecond)
+		defer tick.Stop()
+		send()
+		for {
+			select {
+			case e := <-got:
+				if e.Project == repo && e.Kind == store.EventArtifacts {
+					return
+				}
+			case <-tick.C:
+				send() // LISTEN may not have been active yet
+			case <-lctx.Done():
+				t.Fatalf("no event after %s", what)
+			}
+		}
+	}
+	pr, run := 3, int64(0)
+	wait("upsert", func() {
+		run++
+		if _, _, err := s.UpsertArtifact(ctx, &store.Artifact{Repo: repo, SHA: "abc", Source: "pr", PR: &pr, RunID: run}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	wait("pr closed", func() {
+		if err := s.MarkPRClosed(ctx, repo, pr); err != nil {
+			t.Fatal(err)
+		}
+	})
 }

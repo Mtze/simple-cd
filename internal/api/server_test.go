@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"crypto/hmac"
@@ -13,6 +14,7 @@ import (
 	"strings"
 	"testing"
 	"testing/fstest"
+	"time"
 
 	"github.com/Mtze/simple-cd/internal/auth"
 	"github.com/Mtze/simple-cd/internal/config"
@@ -78,9 +80,9 @@ targets:
 	svc := &core.Service{Store: st, Config: holder, Registry: okRegistry{}}
 	s := &Server{
 		Store: st, Config: holder, Core: svc, Auth: fakeAuth{}, WebhookSecret: []byte("hook"),
-		BaseURL: "https://cd.example.org",
-		Ingest:  &ingest.Ingester{Config: holder, Store: st, Core: svc},
-		UI:      fstest.MapFS{"index.html": {Data: []byte("<html>app</html>")}, "assets/app.js": {Data: []byte("js")}},
+		BaseURL: "https://cd.example.org", Events: &Hub{},
+		Ingest: &ingest.Ingester{Config: holder, Store: st, Core: svc},
+		UI:     fstest.MapFS{"index.html": {Data: []byte("<html>app</html>")}, "assets/app.js": {Data: []byte("js")}},
 	}
 	srv := httptest.NewServer(s.Handler())
 	t.Cleanup(srv.Close)
@@ -307,3 +309,43 @@ func TestUIFallback(t *testing.T) {
 func itoa(i int64) string { return strings.TrimSpace(jsonNumber(i)) }
 
 func jsonNumber(i int64) string { b, _ := json.Marshal(i); return string(b) }
+
+func TestEventStream(t *testing.T) {
+	e := setup(t)
+	reqCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	req, _ := http.NewRequestWithContext(reqCtx, "GET", e.srv.URL+"/api/events", nil)
+	b, _ := json.Marshal(dev)
+	req.Header.Set("X-Test-User", string(b))
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.Header.Get("Content-Type") != "text/event-stream" {
+		t.Fatalf("content type %q", resp.Header.Get("Content-Type"))
+	}
+	rd := bufio.NewReader(resp.Body)
+	line := func() string {
+		s, err := rd.ReadString('\n')
+		if err != nil {
+			t.Fatal(err)
+		}
+		return s
+	}
+	// The stream subscribes before it says hello, so nothing published after this is lost.
+	if l := line(); l != ": connected\n" {
+		t.Fatalf("first line %q", l)
+	}
+	line()
+	e.s.Events.Publish(store.Event{Kind: store.EventArtifacts, Project: "org/app"})
+	if l := line() + line(); l != "event: change\n"+`data: {"kind":"artifacts","project":"org/app"}`+"\n" {
+		t.Fatalf("event %q", l)
+	}
+
+	anon, _ := http.Get(e.srv.URL + "/api/events")
+	anon.Body.Close()
+	if anon.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("without a session: %d", anon.StatusCode)
+	}
+}

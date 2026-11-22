@@ -93,6 +93,7 @@ The test (`e2e/e2e_test.go`) covers:
 - `workflow_run` webhooks signed with the webhook secret; simple-cd fetches `deploy.json`, `.cd.yaml` and the values file from the fake GitHub API.
 - the registry check against a real registry: an artifact with a missing image digest is not deployable.
 - the Keycloak login form and the session cookie.
+- live updates: four `/api/events` streams, spread over both replicas, each receive the change event of a new build.
 - a manual deploy through an executor Job: Vault Kubernetes auth, the cluster credentials and values from Vault, `helm upgrade --install` of a chart from the registry, the live log stream; the test checks the values that reached the release.
 - a preview: auto-deploy from a pull request build into a labelled namespace, teardown on `pull_request` closed.
 - the deployment statuses simple-cd reports to GitHub.
