@@ -68,11 +68,20 @@ export function SourceIcon({ source }: { source?: Source }) {
   return null;
 }
 
-export function ArtifactRef({ a }: { a: { source?: Source; pr?: number; refName?: string; sha?: string } }) {
+type RefData = { source?: Source; pr?: number; prTitle?: string; prUrl?: string; refName?: string; sha?: string };
+
+// link=false where the whole ref already sits inside a link.
+export function ArtifactRef({ a, link = true }: { a: RefData; link?: boolean }) {
+  const isPR = a.source === 'pr' && a.pr;
+  const label = isPR ? (a.prTitle ? `#${a.pr} ${a.prTitle}` : `#${a.pr}`) : a.refName;
   return (
     <span className="artifact-ref">
       <SourceIcon source={a.source} />
-      <span>{a.source === 'pr' && a.pr ? `#${a.pr}` : a.refName}</span>
+      {isPR && link && a.prUrl ? (
+        <a className="ref-label" href={a.prUrl} target="_blank" rel="noopener noreferrer" title={label}>{label}</a>
+      ) : (
+        <span className="ref-label" title={label}>{label}</span>
+      )}
       {a.sha && <code className="sha" title={a.sha}>{shortSha(a.sha)}</code>}
     </span>
   );

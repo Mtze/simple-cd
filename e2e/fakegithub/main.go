@@ -114,6 +114,9 @@ func (f *fake) routes() http.Handler {
 		f.mu.Unlock()
 		writeJSON(w, out)
 	})
+	mux.HandleFunc("GET /repos/{owner}/{repo}/pulls/{n}", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, map[string]string{"title": "Pull request " + r.PathValue("n")})
+	})
 	mux.HandleFunc("GET /repos/{owner}/{repo}/git/ref/tags/{name...}", http.NotFound)
 	mux.HandleFunc("POST /repos/{owner}/{repo}/deployments", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {

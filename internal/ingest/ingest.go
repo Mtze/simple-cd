@@ -23,6 +23,7 @@ type RepoAPI interface {
 	DownloadArtifactFile(ctx context.Context, repo string, runID int64, artifact, file string) ([]byte, error)
 	File(ctx context.Context, repo, path, ref string) ([]byte, error)
 	PullRequestsForCommit(ctx context.Context, repo, sha string) ([]int, error)
+	PullRequestTitle(ctx context.Context, repo string, number int) (string, error)
 	TagCommit(ctx context.Context, repo, name string) (string, error)
 }
 
@@ -99,6 +100,7 @@ func (i *Ingester) source(ctx context.Context, gh RepoAPI, ev github.WorkflowRun
 		if len(run.PullRequests) > 0 {
 			n := run.PullRequests[0].Number
 			a.PR = &n
+			i.prTitle(ctx, gh, a)
 			return nil
 		}
 		prs, err := gh.PullRequestsForCommit(ctx, a.Repo, a.SHA)
@@ -109,6 +111,7 @@ func (i *Ingester) source(ctx context.Context, gh RepoAPI, ev github.WorkflowRun
 			return fmt.Errorf("no open pull request for %s", a.SHA)
 		}
 		a.PR = &prs[0]
+		i.prTitle(ctx, gh, a)
 	case "release":
 		a.Source = config.SourceRelease
 	default:
@@ -213,10 +216,30 @@ func (i *Ingester) checkRegistry(ctx context.Context, a *store.Artifact) {
 	}
 }
 
-// PullRequest handles pull_request webhooks; only "closed" matters.
+// prTitle is best effort: the run still counts without a title, and the
+// next pull_request webhook fills it in.
+func (i *Ingester) prTitle(ctx context.Context, gh RepoAPI, a *store.Artifact) {
+	title, err := gh.PullRequestTitle(ctx, a.Repo, *a.PR)
+	if err != nil {
+		slog.Warn("pull request title not loaded", "repo", a.Repo, "pr", *a.PR, "err", err)
+		return
+	}
+	a.PRTitle = title
+}
+
+// PullRequest handles pull_request webhooks: every action carries the
+// current title, and "closed" ends the previews of the PR.
 func (i *Ingester) PullRequest(ctx context.Context, ev github.PullRequestEvent) error {
 	repo, known := i.Config.Get().Project(ev.Repository.FullName)
-	if ev.Action != "closed" || !known {
+	if !known {
+		return nil
+	}
+	if ev.PullRequest.Title != "" {
+		if err := i.Store.SetPRTitle(ctx, repo, ev.Number, ev.PullRequest.Title); err != nil {
+			return err
+		}
+	}
+	if ev.Action != "closed" {
 		return nil
 	}
 	return i.Core.PRClosed(ctx, repo, ev.Number)

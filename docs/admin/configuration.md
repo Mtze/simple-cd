@@ -132,6 +132,7 @@ Fields that apply to every type:
 | `project` | yes | | `owner/repo` of the project the target belongs to |
 | `type` | yes | | `helm`, `compose` or `ansible` |
 | `role` | no | none | an extra Keycloak client role needed to deploy, for example `deploy:app-prod` |
+| `url` | no | none | `http` or `https` URL of the running environment; the UI shows an **Open** button. Preview targets may use `{pr}` for the pull request number, for example `https://pr-{pr}.app.example.org` |
 | `lockable` | no | `false` | a deploy locks the target for `lockDuration` |
 | `lockDuration` | no | `defaults.lockDuration` | lock duration for this target, positive |
 | `jobTimeout` | no | `defaults.jobTimeout` | maximum deployment run time for this target, positive |

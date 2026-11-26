@@ -170,7 +170,7 @@ The inputs of `cd-publish` are documented in the [deploy.json reference](../refe
 ## Step 3: deploy
 
 Open the simple-cd UI, pick your project and find the artifact under **Pull requests**, **Branches** or **Releases**.
-Each target shows a check mark when the artifact is deployable there, or a cross with the reasons.
-Click **Deploy** next to a target; [Deploying with the UI](deploying.md) explains the dialog.
+Each target shows as a chip with a check mark when the artifact is deployable there, or a cross with the reasons.
+Click **Deploy** in the artifact row and pick the target; [Deploying with the UI](deploying.md) explains the dialog.
 
 If nothing shows up, see [Troubleshooting](troubleshooting.md#the-artifact-does-not-show-up).

@@ -60,3 +60,17 @@ describe('TargetCard actions', () => {
     expect(screen.getByText('Docker upgrade')).toBeTruthy();
   });
 });
+
+describe('TargetCard url', () => {
+  it('offers to open the environment when the target has a url', () => {
+    renderCard({ url: 'https://app-test.example.org' });
+    const link = screen.getByRole('link', { name: 'Open app-test' }) as HTMLAnchorElement;
+    expect(link.href).toBe('https://app-test.example.org/');
+    expect(link.target).toBe('_blank');
+  });
+
+  it('shows no open link without a url', () => {
+    renderCard({});
+    expect(screen.queryByRole('link', { name: 'Open app-test' })).toBeNull();
+  });
+});

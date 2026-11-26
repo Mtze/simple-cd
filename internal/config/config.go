@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"regexp"
 	"strconv"
@@ -86,6 +87,7 @@ type Target struct {
 	Project      string      `yaml:"project"`
 	Type         string      `yaml:"type"`
 	Role         string      `yaml:"role"`
+	URL          string      `yaml:"url"` // where people open the environment; {pr} in preview targets
 	Lockable     bool        `yaml:"lockable"`
 	LockDuration *Duration   `yaml:"lockDuration"`
 	JobTimeout   *Duration   `yaml:"jobTimeout"`
@@ -231,6 +233,16 @@ func (c *Config) Validate() error {
 		if len(c.Registries(t.Project)) == 0 {
 			add("%s: no allowed registries (set defaults.registries or projects.%s.registries)", where, t.Project)
 		}
+		if t.URL != "" {
+			// The UI renders it as a link, so only web URLs (no javascript:).
+			u, err := url.Parse(strings.ReplaceAll(t.URL, "{pr}", "1"))
+			if err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" {
+				add("%s: url must be an http or https URL", where)
+			}
+			if strings.Contains(t.URL, "{pr}") && !t.Preview {
+				add("%s: {pr} in url only works for preview targets", where)
+			}
+		}
 		for _, d := range []*Duration{t.LockDuration, t.JobTimeout, t.PreviewTTL} {
 			if d != nil && *d <= 0 {
 				add("%s: durations must be positive", where)
@@ -335,6 +347,11 @@ func (c *Config) Target(id string) (Target, bool) {
 		}
 	}
 	return Target{}, false
+}
+
+// PreviewURL is the url of a preview target for one pull request.
+func (t Target) PreviewURL(pr int) string {
+	return strings.ReplaceAll(t.URL, "{pr}", strconv.Itoa(pr))
 }
 
 // ProjectNames returns every project that is listed or has a target.

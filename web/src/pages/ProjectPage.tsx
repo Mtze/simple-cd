@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { api } from '../api/client';
 import type { Artifact, ChangeEvent, Source, Target } from '../api/types';
 import { ArtifactRef, ErrorBox, Loading, RelTime } from '../components/common';
@@ -6,6 +6,7 @@ import { DeployDialog } from '../components/DeployDialog';
 import { CheckIcon, CrossIcon, ExternalIcon, WarningIcon } from '../components/icons';
 import { PreviewTable } from '../components/tables';
 import { TargetCard } from '../components/TargetCard';
+import { useDismiss } from '../lib/dismiss';
 import { navigate, useLocation } from '../lib/router';
 import { useApi } from '../lib/useApi';
 
@@ -122,6 +123,62 @@ function Artifacts({ name, targets }: { name: string; targets: Target[] }) {
   );
 }
 
+// A target missing from readiness was not evaluated for this artifact.
+const reasonsFor = (a: Artifact, t: Target) => a.readiness[t.id] ?? ['Not evaluated for this target'];
+
+// One menu per artifact instead of one button per target keeps long lists readable.
+function DeployMenu({ artifact: a, targets, onDeploy }: { artifact: Artifact; targets: Target[]; onDeploy: (t: Target) => void }) {
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
+  const menuId = useId();
+  useDismiss(open, () => setOpen(false), root, button);
+
+  const allowed = targets.filter((t) => t.permissions.deploy);
+  if (allowed.length === 0) return null;
+  return (
+    <div className="deploy-menu" ref={root}>
+      <button
+        ref={button}
+        type="button"
+        className="btn btn-sm"
+        aria-expanded={open}
+        aria-controls={menuId}
+        aria-label={`Deploy ${a.sha.slice(0, 7)}`}
+        onClick={() => setOpen((o) => !o)}
+      >
+        Deploy <span aria-hidden="true">▾</span>
+      </button>
+      {open && (
+        <div className="menu menu-list" id={menuId}>
+          {allowed.map((t) => {
+            const reasons = reasonsFor(a, t);
+            return (
+              <button
+                key={t.id}
+                type="button"
+                className="menu-item"
+                disabled={reasons.length > 0}
+                aria-label={`Deploy to ${t.id}`}
+                onClick={() => {
+                  setOpen(false);
+                  onDeploy(t);
+                }}
+              >
+                {reasons.length === 0 ? <CheckIcon /> : <CrossIcon />}
+                <span className="menu-item-text">
+                  {t.id}
+                  {reasons.length > 0 && <span className="muted">{reasons[0]}</span>}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ArtifactRow({ artifact: a, targets, onDeploy }: { artifact: Artifact; targets: Target[]; onDeploy: (t: Target) => void }) {
   return (
     <li className="card artifact">
@@ -158,38 +215,35 @@ export function ArtifactRow({ artifact: a, targets, onDeploy }: { artifact: Arti
         )}
       </div>
 
-      <ul className="readiness" aria-label="Targets">
-        {targets.map((t) => {
-          // A target missing from readiness was not evaluated for this artifact.
-          const reasons = a.readiness[t.id] ?? ['Not evaluated for this target'];
-          const ok = reasons.length === 0;
-          const deployed = a.deployedTo.includes(t.id);
-          return (
-            <li key={t.id} className="readiness-row">
-              {ok ? (
-                <span className="ready ready-ok" title="Deployable">
-                  <CheckIcon /> {t.id}
-                </span>
-              ) : (
-                <details className="ready ready-no">
-                  <summary title={reasons.join('\n')}>
-                    <CrossIcon /> {t.id} <span className="sr-only">not deployable, show reasons</span>
-                  </summary>
-                  <ul>
-                    {reasons.map((r) => <li key={r}>{r}</li>)}
-                  </ul>
-                </details>
-              )}
-              {deployed && <span className="badge badge-accent">deployed</span>}
-              {t.permissions.deploy && (
-                <button type="button" className="btn btn-sm" disabled={!ok} onClick={() => onDeploy(t)} aria-label={`Deploy to ${t.id}`}>
-                  Deploy
-                </button>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+      <div className="artifact-targets">
+        <ul className="chips" aria-label="Targets">
+          {targets.map((t) => {
+            const reasons = reasonsFor(a, t);
+            const deployed = a.deployedTo.includes(t.id);
+            return (
+              <li key={t.id}>
+                {reasons.length === 0 ? (
+                  <span className={`chip ${deployed ? 'chip-deployed' : 'chip-ok'}`} title={deployed ? 'Deployed here' : 'Deployable'}>
+                    <CheckIcon /> {t.id}
+                    {deployed && <span className="sr-only">, deployed</span>}
+                  </span>
+                ) : (
+                  <details className={`chip chip-no${deployed ? ' chip-deployed' : ''}`}>
+                    <summary title={reasons.join('\n')}>
+                      <CrossIcon /> {t.id}
+                      <span className="sr-only">{deployed ? ', deployed' : ''}, not deployable, show reasons</span>
+                    </summary>
+                    <ul className="chip-reasons">
+                      {reasons.map((r) => <li key={r}>{r}</li>)}
+                    </ul>
+                  </details>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+        <DeployMenu artifact={a} targets={targets} onDeploy={onDeploy} />
+      </div>
     </li>
   );
 }

@@ -61,6 +61,7 @@ type Target = {
   lockable: boolean;
   lockDurationSeconds: number;
   role?: string;                 // extra Keycloak role required to deploy
+  url?: string;                  // where people open the environment (not on preview targets)
   autoDeploy?: { from: ("pr" | "branch" | "release")[]; branches?: string[] };
   status: TargetStatus;
   maintenance?: { reason: string; by: string; since: string };
@@ -77,6 +78,7 @@ type Deployed = {
   refName?: string;
   source?: "pr" | "branch" | "release";
   pr?: number;
+  prTitle?: string;
   actor: string;
   finishedAt: string;
 };
@@ -100,6 +102,8 @@ type Deployment = {
 type ArtifactBrief = {
   id: number; repo: string; sha: string; source: "pr" | "branch" | "release";
   refName: string; pr?: number;
+  prTitle?: string;              // title of the pull request, kept current by pull_request webhooks
+  prUrl?: string;                // the pull request on GitHub
 };
 
 type Artifact = ArtifactBrief & {
@@ -122,6 +126,7 @@ type Preview = {
   expiresAt: string; createdAt: string; updatedAt: string;
   orphaned: boolean;             // target no longer in the config
   canTeardown: boolean;
+  url?: string;                  // the preview target's url with {pr} filled in, for active previews
 };
 
 type User = { username: string; name: string; email: string; roles: string[] };
@@ -253,9 +258,14 @@ All live previews including orphaned ones.
 
 The Keycloak client roles the configuration uses: `platform-admin`, `viewer`, the two roles of every project and every target `role`.
 `clientId` is the OIDC client that holds them.
+`realmSettingsUrl` is the realm settings page of the Keycloak admin console, derived from the issuer, or empty when the issuer is not a Keycloak realm.
 
 ```json
-{ "clientId": "simple-cd", "roles": [{ "name": "project:org/app:developer", "description": "simple-cd: deploy org/app" }] }
+{
+  "clientId": "simple-cd",
+  "realmSettingsUrl": "https://keycloak.example.org/admin/main/console/#/main/realm-settings",
+  "roles": [{ "name": "project:org/app:developer", "description": "simple-cd: deploy org/app" }]
+}
 ```
 
 ### Auth

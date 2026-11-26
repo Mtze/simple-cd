@@ -61,7 +61,7 @@ function AdminPreviews() {
 }
 
 // The partial import format of Keycloak (Realm settings > Action > Partial import).
-// SKIP keeps roles that exist, so the file can be imported again after every config change.
+// The admin console ignores ifResourceExists and uses its own dropdown, so the UI text says to pick Skip there.
 export function keycloakImport(list: RoleList): string {
   return JSON.stringify({ ifResourceExists: 'SKIP', roles: { client: { [list.clientId]: list.roles } } }, null, 2);
 }
@@ -74,12 +74,18 @@ function AdminRoles() {
     <>
       <p className="muted">
         The client roles of <code>{res.data.clientId}</code> that the configuration uses. simple-cd does not create them.
-        Import the file in Keycloak under Realm settings, Action, Partial import; existing roles stay as they are.
+        Import the file in Keycloak under Realm settings, Action, Partial import, tick Client roles and choose Skip for
+        existing resources; existing roles and their assignments stay as they are.
         Who gets which role you decide in Keycloak.
       </p>
-      <p>
+      <div className="toolbar">
         <a className="btn" href={href} download={`${res.data.clientId}-roles.json`}>Download Keycloak import</a>
-      </p>
+        {res.data.realmSettingsUrl && (
+          <a className="btn" href={res.data.realmSettingsUrl} target="_blank" rel="noopener noreferrer">
+            Open realm settings in Keycloak
+          </a>
+        )}
+      </div>
       <div className="table-wrap">
         <table className="table">
           <thead>

@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"strconv"
 	"strings"
 	"time"
 
@@ -18,6 +19,7 @@ type targetView struct {
 	Lockable            bool               `json:"lockable"`
 	LockDurationSeconds int64              `json:"lockDurationSeconds"`
 	Role                string             `json:"role,omitempty"`
+	URL                 string             `json:"url,omitempty"`
 	AutoDeploy          *config.AutoDeploy `json:"autoDeploy,omitempty"`
 	Status              string             `json:"status"`
 	Maintenance         *maintenanceView   `json:"maintenance,omitempty"`
@@ -45,6 +47,7 @@ type deployedView struct {
 	RefName      string     `json:"refName,omitempty"`
 	Source       string     `json:"source,omitempty"`
 	PR           *int       `json:"pr,omitempty"`
+	PRTitle      string     `json:"prTitle,omitempty"`
 	Actor        string     `json:"actor"`
 	FinishedAt   *time.Time `json:"finishedAt,omitempty"`
 }
@@ -56,6 +59,8 @@ type artifactBrief struct {
 	Source  string `json:"source"`
 	RefName string `json:"refName"`
 	PR      *int   `json:"pr,omitempty"`
+	PRTitle string `json:"prTitle,omitempty"`
+	PRURL   string `json:"prUrl,omitempty"`
 }
 
 type deploymentView struct {
@@ -85,15 +90,21 @@ type imageView struct {
 
 type previewView struct {
 	*store.Preview
-	Orphaned    bool `json:"orphaned"`
-	CanTeardown bool `json:"canTeardown"`
+	Orphaned    bool   `json:"orphaned"`
+	CanTeardown bool   `json:"canTeardown"`
+	URL         string `json:"url,omitempty"`
 }
 
 func brief(a *store.Artifact) *artifactBrief {
 	if a == nil {
 		return nil
 	}
-	return &artifactBrief{ID: a.ID, Repo: a.Repo, SHA: a.SHA, Source: a.Source, RefName: a.RefName, PR: a.PR}
+	b := &artifactBrief{ID: a.ID, Repo: a.Repo, SHA: a.SHA, Source: a.Source, RefName: a.RefName, PR: a.PR, PRTitle: a.PRTitle}
+	// The run URL comes from GitHub, so it carries the right host, also for GitHub Enterprise.
+	if base, _, ok := strings.Cut(a.RunURL, "/actions/runs/"); ok && a.PR != nil {
+		b.PRURL = base + "/pull/" + strconv.Itoa(*a.PR)
+	}
+	return b
 }
 
 // snapshot is the state needed to render targets, loaded once per request.
@@ -147,6 +158,7 @@ func (s *Server) targetView(ctx context.Context, snap *snapshot, u core.User, t 
 		ID: t.ID, Project: t.Project, Type: t.Type, Preview: t.Preview, Lockable: t.Lockable,
 		LockDurationSeconds: int64(snap.cfg.LockDuration(t).Seconds()), Role: t.Role, AutoDeploy: t.AutoDeploy,
 		Status:      core.TargetStatus(t, st, snap.active[t.ID], snap.now),
+		URL:         targetURL(t),
 		Permissions: core.PermissionsFor(u, t), Active: []deploymentView{},
 	}
 	if st.Maintenance {
@@ -161,7 +173,7 @@ func (s *Server) targetView(ctx context.Context, snap *snapshot, u core.User, t 
 	if d := snap.current[t.ID]; d != nil && !t.Preview {
 		cur := &deployedView{DeploymentID: d.ID, ArtifactID: d.ArtifactID, Actor: d.Actor, FinishedAt: d.FinishedAt}
 		if a := snap.artifact(ctx, s.Store, d.ArtifactID); a != nil {
-			cur.SHA, cur.RefName, cur.Source, cur.PR = a.SHA, a.RefName, a.Source, a.PR
+			cur.SHA, cur.RefName, cur.Source, cur.PR, cur.PRTitle = a.SHA, a.RefName, a.Source, a.PR, a.PRTitle
 		}
 		v.Current = cur
 	}
@@ -199,7 +211,19 @@ func (s *Server) artifactView(snap *snapshot, a *store.Artifact) artifactView {
 func (s *Server) previewView(cfg *config.Config, u core.User, p *store.Preview) previewView {
 	t, known := cfg.Target(p.TargetID)
 	can := u.IsAdmin() || (known && core.PermissionsFor(u, t).Deploy)
-	return previewView{Preview: p, Orphaned: !known, CanTeardown: can && p.Status == store.PreviewActive}
+	v := previewView{Preview: p, Orphaned: !known, CanTeardown: can && p.Status == store.PreviewActive}
+	if known && p.Status == store.PreviewActive {
+		v.URL = t.PreviewURL(p.PR)
+	}
+	return v
+}
+
+// targetURL hides the url template of preview targets; each preview has its own.
+func targetURL(t config.Target) string {
+	if t.Preview {
+		return ""
+	}
+	return t.URL
 }
 
 func projectRole(u core.User, project string) string {

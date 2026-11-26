@@ -48,6 +48,7 @@ type Server struct {
 	UI            fs.FS  // built UI; nil serves a placeholder
 	Events        *Hub   // change events for /api/events
 	ClientID      string // OIDC client that holds the roles, for /api/admin/roles
+	Issuer        string // OIDC issuer, for the link to the Keycloak admin console
 }
 
 func (s *Server) Handler() http.Handler {
@@ -597,7 +598,24 @@ func (s *Server) allPreviews(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) roles(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, 200, map[string]any{"clientId": s.ClientID, "roles": core.Roles(s.Config.Get())})
+	writeJSON(w, 200, map[string]any{
+		"clientId": s.ClientID, "roles": core.Roles(s.Config.Get()),
+		"realmSettingsUrl": realmSettingsURL(s.Issuer),
+	})
+}
+
+// realmSettingsURL turns a Keycloak issuer (https://kc/realms/main, or
+// https://kc/auth/realms/main before Keycloak 17) into the realm settings page
+// of the admin console, where Action > Partial import lives. It uses the
+// realm's own console, so realm admins need no account in master.
+// Returns "" for issuers that are not Keycloak.
+func realmSettingsURL(issuer string) string {
+	base, realm, ok := strings.Cut(strings.TrimSuffix(issuer, "/"), "/realms/")
+	if !ok || realm == "" || strings.Contains(realm, "/") {
+		return ""
+	}
+	realm = url.PathEscape(realm)
+	return base + "/admin/" + realm + "/console/#/" + realm + "/realm-settings"
 }
 
 func (s *Server) ready(w http.ResponseWriter, r *http.Request) {

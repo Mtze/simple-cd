@@ -56,15 +56,18 @@ The project page lists artifacts in three tabs:
 
 simple-cd derives the source, the commit and the PR number from GitHub, never from `deploy.json`.
 
-Each artifact row shows the commit, the branch, a link to the workflow run, who triggered the run, the chart version and the images.
+Each artifact row shows the commit, the branch or the pull request with its title and a link to it, a link to the workflow run, who triggered the run, the chart version and the images.
 A warning appears when several workflows publish for the same commit; the newest run wins.
 
-On the right, every target of the project gets a readiness line:
+Below, every target of the project gets a chip:
 
-- a check mark: the artifact is deployable to this target,
-- a cross: it is not; open it to read the reasons ([what they mean](troubleshooting.md)),
-- a **deployed** badge: this artifact is what the target currently runs,
-- a **Deploy** button, if you have the deploy permission for the target.
+- green with a check mark: the artifact is deployable to this target,
+- red with a cross: it is not; click it to read the reasons ([what they mean](troubleshooting.md)),
+- blue: this artifact is what the target currently runs.
+
+**Deploy** at the end of the row opens a menu with the targets you may deploy to.
+Targets the artifact is not ready for are greyed out with the first reason.
+The button is missing when you lack the deploy permission for every target of the project.
 
 Preview targets only appear in the **Pull requests** tab.
 

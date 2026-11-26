@@ -531,6 +531,13 @@ svg { flex-shrink: 0; vertical-align: -0.15em; }
   align-items: center;
   gap: 6px;
   font-weight: 500;
+  min-width: 0;
+}
+.ref-label {
+  max-width: 48ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .sha {
   padding: 1px 5px;
@@ -647,8 +654,8 @@ h1.target-title { font-size: 22px; }
 }
 .artifact {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 320px);
-  gap: 12px 24px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
   padding: 14px 16px;
 }
 .artifact-main { display: grid; gap: 6px; align-content: start; min-width: 0; }
@@ -669,52 +676,82 @@ h1.target-title { font-size: 22px; }
 .images summary { font-size: 12.5px; color: var(--text-muted); cursor: pointer; }
 .images ul { margin-top: 6px; font-size: 12.5px; }
 
-.readiness {
+.artifact-targets {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px 12px;
+}
+.chips {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: grid;
-  align-content: start;
-  background: var(--surface-2);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+.chip { --c: var(--text-muted); position: relative; }
+.chip,
+.chip summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  color: var(--c);
+  background: color-mix(in srgb, var(--c) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--c) 26%, transparent);
+}
+.chip svg { width: 12px; height: 12px; }
+.chip-ok { --c: var(--green); }
+.chip-deployed { --c: var(--accent); font-weight: 600; }
+.chip-no { padding: 0; border: 0; background: none; height: auto; }
+.chip-no summary { --c: var(--red); cursor: pointer; list-style: none; }
+.chip-no.chip-deployed summary { --c: var(--accent); }
+.chip-no summary::-webkit-details-marker { display: none; }
+.chip-reasons {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  width: max-content;
+  max-width: min(360px, calc(100vw - 48px));
+  overflow-wrap: anywhere;
+  margin: 0;
+  padding: 8px 12px 8px 26px;
+  font-size: 12.5px;
+  color: var(--text);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-pop);
 }
-.readiness-row {
+.deploy-menu { position: relative; flex: none; }
+.menu-list { padding: 4px; width: min(320px, calc(100vw - 32px)); }
+.menu-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
-  flex-wrap: wrap;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text);
+  font: inherit;
   font-size: 13px;
-  padding: 6px 10px;
-}
-.readiness-row + .readiness-row { border-top: 1px solid var(--border); }
-.readiness-row .btn { margin-left: auto; }
-.ready {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  min-width: 0;
-  flex: 1;
-  overflow-wrap: anywhere;
-}
-.ready-ok svg { color: var(--green); }
-.ready-no { display: block; position: relative; }
-.ready-no summary {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
+  text-align: left;
   cursor: pointer;
-  color: var(--text-muted);
-  list-style: none;
 }
-.ready-no summary::-webkit-details-marker { display: none; }
-.ready-no summary svg { color: var(--red); }
-.ready-no ul {
-  margin: 4px 0 0;
-  padding-left: 20px;
-  color: var(--text-muted);
-  font-size: 12.5px;
-}
+.menu-item:hover:not(:disabled) { background: var(--surface-2); }
+.menu-item:disabled { cursor: not-allowed; color: var(--text-muted); }
+.menu-item svg { width: 14px; height: 14px; margin-top: 2px; flex: none; color: var(--green); }
+.menu-item:disabled svg { color: var(--red); }
+.menu-item-text { display: grid; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.menu-item-text .muted { font-size: 12px; }
 
 /* Tables */
 .table-wrap {
@@ -917,7 +954,6 @@ details > summary { cursor: pointer; }
 @media (max-width: 720px) {
   .main { padding-top: 20px; }
   .topbar-inner { gap: 12px; }
-  .artifact { grid-template-columns: minmax(0, 1fr); }
   .project-grid,
   .target-grid { grid-template-columns: minmax(0, 1fr); }
   .kv-wide { grid-template-columns: max-content 1fr; }

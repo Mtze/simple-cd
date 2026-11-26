@@ -4,6 +4,7 @@ import type { Deployment, Preview } from '../api/types';
 import { Link } from '../lib/router';
 import { formatDuration } from '../lib/time';
 import { ArtifactRef, RelTime, Remaining, StatusBadge } from './common';
+import { ExternalIcon } from './icons';
 
 export function actorLabel(d: Pick<Deployment, 'actor' | 'actorDetail'>) {
   return d.actorDetail ? `${d.actor} (${d.actorDetail})` : d.actor;
@@ -104,6 +105,11 @@ export function PreviewTable({ previews, onChanged, admin }: { previews: Preview
                   </span>
                 </td>
                 <td className="cell-actions">
+                  {p.url && (
+                    <a className="btn btn-sm" href={p.url} target="_blank" rel="noopener noreferrer" aria-label={`Open preview of PR #${p.pr}`}>
+                      Open <ExternalIcon />
+                    </a>
+                  )}{' '}
                   {p.canTeardown && p.status === 'active' && (
                     <button type="button" className="btn btn-sm btn-danger" disabled={busy === p.id} onClick={() => teardown(p)}>
                       {p.orphaned ? 'Forget' : 'Tear down'}

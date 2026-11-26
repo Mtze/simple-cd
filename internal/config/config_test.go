@@ -114,6 +114,8 @@ targets:
 		"bad duration":        {`defaults: {lockDuration: soon}`, "invalid duration"},
 		"ansible no ref":      {`defaults: {registries: [r/]}` + "\n" + `targets: [{id: a, project: o/r, type: ansible, ansible: {source: "git@x:y.git", playbook: p.yml, inventory: i, credentials: "vault:c"}}]`, "ansible.ref is required"},
 		"negative default":    {`defaults: {registries: [r/], jobTimeout: -1m}`, "defaults.jobTimeout must be positive"},
+		"url scheme":          {`defaults: {registries: [r/]}` + "\n" + `targets: [{id: a, project: o/r, type: helm, cluster: "vault:c", namespace: n, url: "javascript:alert(1)"}]`, "url must be"},
+		"url pr not preview":  {`defaults: {registries: [r/]}` + "\n" + `targets: [{id: a, project: o/r, type: helm, cluster: "vault:c", namespace: n, url: "https://pr-{pr}.example.org"}]`, "only works for preview"},
 		"bad type":            {`defaults: {registries: [r/]}` + "\n" + `targets: [{id: a, project: o/r, type: k8s}]`, "type must be"},
 	}
 	for name, tc := range cases {
@@ -179,5 +181,12 @@ func TestHolderKeepsOldConfigOnError(t *testing.T) {
 	}
 	if _, ok := h.Get().Target("app-qa"); !ok {
 		t.Fatal("valid config not loaded")
+	}
+}
+
+func TestPreviewURL(t *testing.T) {
+	tg := Target{URL: "https://pr-{pr}.app.example.org"}
+	if got := tg.PreviewURL(42); got != "https://pr-42.app.example.org" {
+		t.Fatal(got)
 	}
 }

@@ -38,7 +38,10 @@ const openDeployDialog = async (page) => {
   // The newest main build changes the Helm values, so the dialog shows a diff.
   await page.getByRole('tab', { name: 'Branches' }).click();
   await page.waitForLoadState('networkidle');
-  await page.locator('button[aria-label="Deploy to demo-test"]:not([disabled])').first().click();
+  // The first artifact that is ready for demo-test; ready targets are plain chips, not details.
+  const row = page.locator('li.artifact').filter({ has: page.locator('span.chip', { hasText: 'demo-test' }) }).first();
+  await row.locator('.deploy-menu > button').click();
+  await row.locator('button[aria-label="Deploy to demo-test"]').click();
   await page.waitForSelector('dialog[open]');
 };
 const openUserMenu = (page) => page.locator('header button').last().click();

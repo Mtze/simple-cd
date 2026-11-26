@@ -69,7 +69,7 @@ func setup(t *testing.T) *env {
 	cfg, err := config.Parse([]byte(`
 defaults: {registries: [ghcr.io/org/]}
 targets:
-  - {id: app-test, project: org/app, type: helm, lockable: true, cluster: "vault:c", namespace: app}
+  - {id: app-test, project: org/app, type: helm, lockable: true, cluster: "vault:c", namespace: app, url: "https://app-test.example.org"}
   - {id: app-prod, project: org/app, type: helm, role: deploy:app-prod, cluster: "vault:c", namespace: app}
 `))
 	if err != nil {
@@ -81,6 +81,7 @@ targets:
 	s := &Server{
 		Store: st, Config: holder, Core: svc, Auth: fakeAuth{}, WebhookSecret: []byte("hook"),
 		BaseURL: "https://cd.example.org", Events: &Hub{}, ClientID: "simple-cd",
+		Issuer: "https://kc.example.org/realms/main",
 		Ingest: &ingest.Ingester{Config: holder, Store: st, Core: svc},
 		UI:     fstest.MapFS{"index.html": {Data: []byte("<html>app</html>")}, "assets/app.js": {Data: []byte("js")}},
 	}
@@ -256,8 +257,22 @@ func TestAdminRoles(t *testing.T) {
 	}
 	resp, out := e.do(t, &admin, "GET", "/api/admin/roles", nil)
 	roles, _ := out["roles"].([]any)
-	if resp.StatusCode != 200 || out["clientId"] != "simple-cd" || len(roles) != 5 {
+	if resp.StatusCode != 200 || out["clientId"] != "simple-cd" || len(roles) != 5 ||
+		out["realmSettingsUrl"] != "https://kc.example.org/admin/main/console/#/main/realm-settings" {
 		t.Fatalf("%d %v", resp.StatusCode, out)
+	}
+}
+
+func TestRealmSettingsURL(t *testing.T) {
+	for issuer, want := range map[string]string{
+		"https://kc.example.org/realms/main/":    "https://kc.example.org/admin/main/console/#/main/realm-settings",
+		"https://kc.example.org/auth/realms/tum": "https://kc.example.org/auth/admin/tum/console/#/tum/realm-settings",
+		"https://login.example.org/oauth2":       "",
+		"https://kc.example.org/realms/":         "",
+	} {
+		if got := realmSettingsURL(issuer); got != want {
+			t.Errorf("%s: %q", issuer, got)
+		}
 	}
 }
 
@@ -359,5 +374,28 @@ func TestEventStream(t *testing.T) {
 	anon.Body.Close()
 	if anon.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("without a session: %d", anon.StatusCode)
+	}
+}
+
+func TestBriefLinksPullRequest(t *testing.T) {
+	pr := 42
+	b := brief(&store.Artifact{Repo: "org/app", Source: "pr", PR: &pr, PRTitle: "Fix it",
+		RunURL: "https://ghe.example.org/org/app/actions/runs/7"})
+	if b.PRURL != "https://ghe.example.org/org/app/pull/42" || b.PRTitle != "Fix it" {
+		t.Fatalf("brief = %+v", b)
+	}
+	if b := brief(&store.Artifact{Repo: "org/app", RunURL: "https://github.com/org/app/actions/runs/7"}); b.PRURL != "" {
+		t.Fatalf("branch artifact got %q", b.PRURL)
+	}
+}
+
+func TestTargetURL(t *testing.T) {
+	e := setup(t)
+	_, out := e.do(t, &dev, "GET", "/api/targets/app-test", nil)
+	if out["target"].(map[string]any)["url"] != "https://app-test.example.org" {
+		t.Fatalf("target = %v", out)
+	}
+	if targetURL(config.Target{Preview: true, URL: "https://pr-{pr}.example.org"}) != "" {
+		t.Fatal("preview target shows its url template")
 	}
 }

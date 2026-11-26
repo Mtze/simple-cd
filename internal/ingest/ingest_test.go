@@ -3,6 +3,7 @@ package ingest
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -41,6 +42,10 @@ func (f *fakeGH) File(_ context.Context, _, path, _ string) ([]byte, error) {
 
 func (f *fakeGH) PullRequestsForCommit(context.Context, string, string) ([]int, error) {
 	return f.prs, nil
+}
+
+func (f *fakeGH) PullRequestTitle(_ context.Context, _ string, n int) (string, error) {
+	return fmt.Sprintf("Fix things in #%d", n), nil
 }
 
 func (f *fakeGH) TagCommit(_ context.Context, _, name string) (string, error) {
@@ -107,7 +112,8 @@ func TestPRRunIsStoredAndAutoDeployed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if a.Source != "pr" || *a.PR != 5 || len(a.Reasons) != 0 || *a.Files["deploy/values-preview.yaml"] != "replicas: 1\n" || a.TriggeringActor != "octo" {
+	if a.Source != "pr" || *a.PR != 5 || a.PRTitle != "Fix things in #5" || len(a.Reasons) != 0 ||
+		*a.Files["deploy/values-preview.yaml"] != "replicas: 1\n" || a.TriggeringActor != "octo" {
 		t.Fatalf("artifact = %+v", a)
 	}
 	active, _ := i.Store.ActiveDeployments(ctx, "app-previews")
@@ -122,7 +128,7 @@ func TestPRNumberFromAPI(t *testing.T) {
 	i := setup(t, gh, nil)
 	i.WorkflowRun(ctx, event(t, run("pull_request", "feature", "org/app", "")))
 	a, _ := i.Store.ArtifactBySHA(ctx, "Org/App", "abc1234")
-	if a == nil || *a.PR != 9 {
+	if a == nil || *a.PR != 9 || a.PRTitle != "Fix things in #9" {
 		t.Fatalf("artifact = %+v", a)
 	}
 }
@@ -233,5 +239,19 @@ func TestPullRequestClosed(t *testing.T) {
 	arts, _ := i.Store.ListArtifacts(ctx, "Org/App", store.ArtifactFilter{})
 	if len(arts) != 0 {
 		t.Fatal("closed PR artifact still listed")
+	}
+}
+
+func TestPullRequestRenamed(t *testing.T) {
+	i := setup(t, goodGH(), nil)
+	i.WorkflowRun(ctx, event(t, run("pull_request", "feature", "org/app", `,"pull_requests":[{"number":5}]`)))
+	ev := github.PullRequestEvent{Action: "edited", Number: 5, Repository: github.Repository{FullName: "org/app"}}
+	ev.PullRequest.Title = "Better title"
+	if err := i.PullRequest(ctx, ev); err != nil {
+		t.Fatal(err)
+	}
+	a, _ := i.Store.ArtifactBySHA(ctx, "Org/App", "abc1234")
+	if a.PRTitle != "Better title" || a.PRClosed {
+		t.Fatalf("artifact = %+v", a)
 	}
 }

@@ -9,6 +9,7 @@ targets:
     lockable: true
     cluster: vault:secret/cd/clusters/test
     namespace: demo
+    url: https://demo.test.example.org
   - id: demo-previews
     project: example/demo
     type: helm
@@ -17,6 +18,7 @@ targets:
       from: [pr]
     cluster: vault:secret/cd/clusters/dev
     previewTTL: 48h
+    url: https://pr-{pr}.demo.preview.example.org
   - id: demo-prod
     project: example/demo
     type: compose
@@ -24,6 +26,7 @@ targets:
     host: vm1.example.org
     ssh: vault:secret/cd/ssh/demo-prod
     dir: /opt/demo
+    url: https://demo.example.org
   - id: tools-vm
     project: example/tools
     type: ansible

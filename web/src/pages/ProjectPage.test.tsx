@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Artifact, Target } from '../api/types';
 import { json, makeTarget, mockFetch, renderWithMe } from '../test/helpers';
@@ -17,6 +17,8 @@ function artifact(over: Partial<Artifact> = {}): Artifact {
   };
 }
 
+const openMenu = () => fireEvent.click(screen.getByRole('button', { name: 'Deploy abcdef1' }));
+
 afterEach(() => {
   vi.unstubAllGlobals();
   window.history.replaceState(null, '', '/');
@@ -29,6 +31,8 @@ describe('ArtifactRow', () => {
     renderWithMe(
       <ul><ArtifactRow artifact={artifact({ readiness: { 'app-test': [], 'app-prod': [] } })} targets={targets} onDeploy={() => {}} /></ul>,
     );
+    expect(screen.queryByRole('button', { name: 'Deploy to app-test' })).toBeNull();
+    openMenu();
     expect(screen.getByRole('button', { name: 'Deploy to app-test' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Deploy to app-prod' })).toBeNull();
     expect(screen.getByText('abcdef1')).toBeTruthy();
@@ -38,8 +42,29 @@ describe('ArtifactRow', () => {
     renderWithMe(
       <ul><ArtifactRow artifact={artifact({ readiness: { 'app-test': ['chart 1.2.3 missing'], 'app-prod': [] } })} targets={targets} onDeploy={() => {}} /></ul>,
     );
+    openMenu();
     expect((screen.getByRole('button', { name: 'Deploy to app-test' }) as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByText('chart 1.2.3 missing')).toBeTruthy();
+    expect(screen.getAllByText('chart 1.2.3 missing').length).toBe(2); // in the chip and in the menu
+  });
+
+  it('starts a deploy from the menu and closes it', () => {
+    const onDeploy = vi.fn();
+    renderWithMe(<ul><ArtifactRow artifact={artifact({ readiness: { 'app-test': [], 'app-prod': [] } })} targets={targets} onDeploy={onDeploy} /></ul>);
+    openMenu();
+    fireEvent.click(screen.getByRole('button', { name: 'Deploy to app-test' }));
+    expect(onDeploy).toHaveBeenCalledWith(targets[0]);
+    expect(screen.queryByRole('button', { name: 'Deploy to app-test' })).toBeNull();
+  });
+
+  it('shows no deploy menu without deploy permission', () => {
+    renderWithMe(<ul><ArtifactRow artifact={artifact({ readiness: { 'app-prod': [] } })} targets={[targets[1]]} onDeploy={() => {}} /></ul>);
+    expect(screen.queryByRole('button', { name: 'Deploy abcdef1' })).toBeNull();
+    expect(screen.getByText('app-prod')).toBeTruthy();
+  });
+
+  it('marks the targets the artifact is deployed to', () => {
+    renderWithMe(<ul><ArtifactRow artifact={artifact({ readiness: { 'app-test': [], 'app-prod': [] }, deployedTo: ['app-test'] })} targets={targets} onDeploy={() => {}} /></ul>);
+    expect(screen.getByText(', deployed')).toBeTruthy();
   });
 });
 
@@ -54,7 +79,8 @@ describe('ProjectPage', () => {
     });
     renderWithMe(<ProjectPage owner="org" repo="app" />);
 
-    expect(await screen.findByRole('button', { name: 'Deploy to app-test' })).toBeTruthy();
+    fireEvent.click(await screen.findByRole('button', { name: 'Deploy abcdef1' }));
+    expect(screen.getByRole('button', { name: 'Deploy to app-test' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Deploy to app-previews' })).toBeNull();
     expect(screen.getByRole('heading', { name: 'Previews' })).toBeTruthy();
   });

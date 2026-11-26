@@ -64,6 +64,8 @@ func main() {
 	add(3, "3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d", "branch", "main", nil, "replicas: 3\nresources:\n  cpu: 500m\n", nil)
 	add(4, "4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e", "pr", "feature/login", &pr12, "replicas: 2\n", []string{"demo-previews"})
 	broken := add(5, "5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f", "pr", "fix/typo", &pr15, "replicas: 2\n", nil)
+	st.SetPRTitle(ctx, repo, pr12, "Add a login page")
+	st.SetPRTitle(ctx, repo, pr15, "Fix a typo in the footer")
 	st.SetArtifactReasons(ctx, broken.ID, []string{"image missing in registry: ghcr.io/example/demo@" + digest(5)})
 
 	history := []struct {

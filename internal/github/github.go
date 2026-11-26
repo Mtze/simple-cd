@@ -348,6 +348,15 @@ func (c *Client) PullRequestsForCommit(ctx context.Context, repo, sha string) ([
 	return out, nil
 }
 
+// PullRequestTitle returns the title of a pull request.
+func (c *Client) PullRequestTitle(ctx context.Context, repo string, number int) (string, error) {
+	var pr struct {
+		Title string `json:"title"`
+	}
+	err := c.do(ctx, http.MethodGet, fmt.Sprintf("/repos/%s/pulls/%d", repo, number), nil, &pr)
+	return pr.Title, err
+}
+
 // TagCommit returns the commit a tag points to, or ErrNotFound when there is
 // no such tag. Annotated tags are peeled to their commit.
 func (c *Client) TagCommit(ctx context.Context, repo, name string) (string, error) {

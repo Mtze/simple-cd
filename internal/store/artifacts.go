@@ -16,6 +16,7 @@ type Artifact struct {
 	RefName         string                 `db:"ref_name" json:"refName"`
 	PR              *int                   `db:"pr" json:"pr,omitempty"`
 	PRClosed        bool                   `db:"pr_closed" json:"prClosed"`
+	PRTitle         string                 `db:"pr_title" json:"prTitle"`
 	RunID           int64                  `db:"run_id" json:"runId"`
 	RunURL          string                 `db:"run_url" json:"runUrl"`
 	Workflow        string                 `db:"workflow" json:"workflow"`
@@ -29,7 +30,7 @@ type Artifact struct {
 	UpdatedAt       time.Time              `db:"updated_at" json:"updatedAt"`
 }
 
-const artifactCols = `id, repo, sha, source, ref_name, pr, pr_closed, run_id, run_url, workflow, triggering_actor,
+const artifactCols = `id, repo, sha, source, ref_name, pr, pr_closed, pr_title, run_id, run_url, workflow, triggering_actor,
 	other_workflows, manifest, repo_config, files, reasons, created_at, updated_at`
 
 // UpsertArtifact stores an artifact. For an existing SHA the newer run wins;
@@ -44,14 +45,15 @@ func (s *Store) UpsertArtifact(ctx context.Context, a *Artifact) (*Artifact, boo
 	}
 	rows, err := s.db.Query(ctx, `
 		INSERT INTO artifacts (repo, sha, source, ref_name, pr, run_id, run_url, workflow, triggering_actor,
-			manifest, repo_config, files, reasons)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+			manifest, repo_config, files, reasons, pr_title)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
 		ON CONFLICT (repo, sha) DO UPDATE SET
 			-- A push run for a commit that is also in a PR must not hide the PR:
 			-- previews only accept PR artifacts.
 			source = CASE WHEN artifacts.source = 'pr' AND EXCLUDED.source = 'branch' THEN 'pr' ELSE EXCLUDED.source END,
 			ref_name = CASE WHEN artifacts.source = 'pr' AND EXCLUDED.source = 'branch' THEN artifacts.ref_name ELSE EXCLUDED.ref_name END,
 			pr = COALESCE(EXCLUDED.pr, artifacts.pr),
+			pr_title = CASE WHEN EXCLUDED.pr_title <> '' THEN EXCLUDED.pr_title ELSE artifacts.pr_title END,
 			run_id = EXCLUDED.run_id, run_url = EXCLUDED.run_url, workflow = EXCLUDED.workflow,
 			triggering_actor = EXCLUDED.triggering_actor,
 			other_workflows = artifacts.other_workflows OR artifacts.workflow <> EXCLUDED.workflow,
@@ -60,7 +62,7 @@ func (s *Store) UpsertArtifact(ctx context.Context, a *Artifact) (*Artifact, boo
 		WHERE EXCLUDED.run_id > artifacts.run_id
 		RETURNING `+artifactCols,
 		a.Repo, a.SHA, a.Source, a.RefName, a.PR, a.RunID, a.RunURL, a.Workflow, a.TriggeringActor,
-		a.Manifest, a.RepoConfig, a.Files, a.Reasons)
+		a.Manifest, a.RepoConfig, a.Files, a.Reasons, a.PRTitle)
 	if err != nil {
 		return nil, false, err
 	}
@@ -115,6 +117,15 @@ func (s *Store) ListArtifacts(ctx context.Context, repo string, f ArtifactFilter
 func (s *Store) MarkPRClosed(ctx context.Context, repo string, pr int) error {
 	_, err := s.db.Exec(ctx, `UPDATE artifacts SET pr_closed = true WHERE repo = $1 AND pr = $2`, repo, pr)
 	if err == nil {
+		s.notify(ctx, Event{Kind: EventArtifacts, Project: repo})
+	}
+	return err
+}
+
+// SetPRTitle keeps the title of a pull request current after it was renamed.
+func (s *Store) SetPRTitle(ctx context.Context, repo string, pr int, title string) error {
+	tag, err := s.db.Exec(ctx, `UPDATE artifacts SET pr_title = $3 WHERE repo = $1 AND pr = $2 AND pr_title <> $3`, repo, pr, title)
+	if err == nil && tag.RowsAffected() > 0 {
 		s.notify(ctx, Event{Kind: EventArtifacts, Project: repo})
 	}
 	return err

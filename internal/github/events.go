@@ -39,8 +39,11 @@ type WorkflowRunEvent struct {
 }
 
 type PullRequestEvent struct {
-	Action       string       `json:"action"`
-	Number       int          `json:"number"`
+	Action      string `json:"action"`
+	Number      int    `json:"number"`
+	PullRequest struct {
+		Title string `json:"title"`
+	} `json:"pull_request"`
 	Repository   Repository   `json:"repository"`
 	Installation Installation `json:"installation"`
 }

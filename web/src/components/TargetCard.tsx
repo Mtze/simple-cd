@@ -4,7 +4,7 @@ import type { Target } from '../api/types';
 import { useMe } from '../lib/me';
 import { Link } from '../lib/router';
 import { ArtifactRef, RelTime, Remaining, StatusBadge, TypeBadge } from './common';
-import { LockIcon, WrenchIcon } from './icons';
+import { ExternalIcon, LockIcon, WrenchIcon } from './icons';
 import { Modal } from './Modal';
 
 export function TargetCard({ target, onChanged, heading = 'h3', linkTitle = true }: {
@@ -24,6 +24,11 @@ export function TargetCard({ target, onChanged, heading = 'h3', linkTitle = true
           <TypeBadge type={target.type} />
           {target.preview && <span className="badge badge-neutral">preview</span>}
           <StatusBadge status={target.status} />
+          {target.url && (
+            <a className="btn btn-sm" href={target.url} target="_blank" rel="noopener noreferrer" aria-label={`Open ${target.id}`}>
+              Open <ExternalIcon />
+            </a>
+          )}
         </div>
       </div>
 
@@ -37,7 +42,7 @@ export function TargetCard({ target, onChanged, heading = 'h3', linkTitle = true
           ) : target.current ? (
             <>
               <Link href={`/deployments/${target.current.deploymentId}`}>
-                <ArtifactRef a={target.current} />
+                <ArtifactRef a={target.current} link={false} />
               </Link>{' '}
               <span className="muted">
                 by {target.current.actor}, <RelTime at={target.current.finishedAt} />

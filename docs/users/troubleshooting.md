@@ -66,7 +66,7 @@ A registry that is down at arrival does not mark the artifact; the check before 
 
 ## The deploy button is missing or disabled
 
-- No **Deploy** button: you lack the deploy permission. You need the developer or maintainer role of the project, plus the target's extra role if it sets one. Roles are read at login, so log out and in again after a role change.
+- No **Deploy** button, or a target missing from its menu: you lack the deploy permission. You need the developer or maintainer role of the project, plus the target's extra role if it sets one. Roles are read at login, so log out and in again after a role change.
 - Disabled: the artifact is not deployable to this target.
 
 ## The deploy is refused

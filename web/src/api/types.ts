@@ -14,6 +14,7 @@ export type Target = {
   lockable: boolean;
   lockDurationSeconds: number;
   role?: string;
+  url?: string;
   autoDeploy?: { from: Source[]; branches?: string[] };
   status: TargetStatus;
   maintenance?: { reason: string; by: string; since: string };
@@ -30,6 +31,7 @@ export type Deployed = {
   refName?: string;
   source?: Source;
   pr?: number;
+  prTitle?: string;
   actor: string;
   finishedAt: string;
 };
@@ -57,6 +59,8 @@ export type ArtifactBrief = {
   source: Source;
   refName: string;
   pr?: number;
+  prTitle?: string;
+  prUrl?: string;
 };
 
 export type Artifact = ArtifactBrief & {
@@ -85,6 +89,7 @@ export type Preview = {
   updatedAt: string;
   orphaned: boolean;
   canTeardown: boolean;
+  url?: string;
 };
 
 export type User = { username: string; name: string; email: string; roles: string[] };
@@ -125,6 +130,7 @@ export type DeploymentDetail = Deployment & { target: Target };
 export type ChangeEvent = { kind: 'artifacts'; project: string };
 
 export type Role = { name: string; description: string };
-export type RoleList = { clientId: string; roles: Role[] };
+// realmSettingsUrl is empty when the issuer is not Keycloak.
+export type RoleList = { clientId: string; roles: Role[]; realmSettingsUrl: string };
 
 export type AuditEvent = { id: number; at: string; actor: string; action: string; object: string; details: unknown };

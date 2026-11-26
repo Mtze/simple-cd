@@ -8,7 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 
 - Live updates: the project page reloads its artifacts as soon as a new build arrives, through `GET /api/events` (Server-Sent Events) fed by Postgres `NOTIFY`, so it works across replicas. Polling stays as a fallback.
-- Admin > Roles lists every Keycloak client role the configuration uses and offers them as a Keycloak partial import file (`GET /api/admin/roles`).
+- Pull request artifacts show the pull request title and link to the pull request. Renames arrive with the next `pull_request` webhook.
+- The artifact list shows each target as a small chip and has one **Deploy** menu per artifact instead of one button per target, so projects with many targets stay readable.
+- Targets take an optional `url`; target cards and live previews (with `{pr}` filled in) get an **Open** button.
+- Admin > Roles lists every Keycloak client role the configuration uses and offers them as a Keycloak partial import file, with a link to the realm settings in the Keycloak admin console (`GET /api/admin/roles`).
 
 ## [0.1.0] - 2026-11-20
 
