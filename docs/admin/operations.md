@@ -60,6 +60,7 @@ For longer retention or a SIEM, export the `audit_events` table from Postgres.
 - Every replica checks the configuration file every 10 seconds and compares its content. ConfigMap updates take up to a minute to reach the pod, so expect a short delay after `helm upgrade`.
 - An invalid file is never applied. The previous configuration stays active, the server logs `config reload failed, keeping previous config` once per broken version, and platform admins see a banner with the error until a valid version arrives.
 - At start, an invalid configuration stops the server.
+- A new project or target `role` needs its client roles in Keycloak: **Admin > Roles** lists them and offers an import file, see [Keycloak](keycloak.md#create-project-roles).
 
 ## Orphaned previews
 

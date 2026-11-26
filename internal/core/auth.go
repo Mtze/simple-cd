@@ -3,6 +3,7 @@
 package core
 
 import (
+	"sort"
 	"strings"
 
 	"github.com/Mtze/simple-cd/internal/config"
@@ -45,6 +46,47 @@ func (u User) IsAdmin() bool { return u.Has(RolePlatformAdmin) }
 // GitHub repo names are case-insensitive, so the role uses lowercase.
 func ProjectRoleName(project, role string) string {
 	return "project:" + strings.ToLower(project) + ":" + role
+}
+
+// Role is a client role in Keycloak that the configuration refers to.
+type Role struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
+// Roles lists every client role the configuration uses, so an admin can
+// create them in Keycloak. simple-cd never creates roles itself: that would
+// need admin rights on the whole realm.
+func Roles(cfg *config.Config) []Role {
+	out := []Role{
+		{RolePlatformAdmin, "simple-cd: everything in every project, audit log"},
+		{"viewer", "simple-cd: read access only"},
+	}
+	seen := map[string]bool{RolePlatformAdmin: true, "viewer": true}
+	add := func(name, desc string) {
+		if !seen[name] {
+			seen[name] = true
+			out = append(out, Role{name, desc})
+		}
+	}
+	projects := cfg.ProjectNames()
+	sort.Slice(projects, func(i, j int) bool { return strings.ToLower(projects[i]) < strings.ToLower(projects[j]) })
+	for _, p := range projects {
+		p = strings.ToLower(p)
+		add(ProjectRoleName(p, RoleDeveloper), "simple-cd: deploy "+p)
+		add(ProjectRoleName(p, RoleMaintainer), "simple-cd: deploy "+p+", take over locks, maintenance")
+	}
+	var targets []Role
+	for _, t := range cfg.Targets {
+		if t.Role != "" {
+			targets = append(targets, Role{t.Role, "simple-cd: also needed to deploy to " + t.ID})
+		}
+	}
+	sort.Slice(targets, func(i, j int) bool { return targets[i].Name < targets[j].Name })
+	for _, r := range targets {
+		add(r.Name, r.Description)
+	}
+	return out
 }
 
 // ProjectRole returns "maintainer", "developer" or "".

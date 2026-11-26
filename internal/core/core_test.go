@@ -149,6 +149,29 @@ func TestPermissions(t *testing.T) {
 	}
 }
 
+func TestRoles(t *testing.T) {
+	cfg, err := config.Parse([]byte(`
+defaults: {registries: [ghcr.io/org/]}
+projects:
+  Org/Zeta: {}
+targets:
+  - {id: app-prod, project: org/app, type: helm, role: deploy:prod, cluster: "vault:c", namespace: app}
+  - {id: app-prod-2, project: org/app, type: helm, role: deploy:prod, cluster: "vault:c", namespace: app2}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, r := range Roles(cfg) {
+		names = append(names, r.Name)
+	}
+	want := "platform-admin viewer project:org/app:developer project:org/app:maintainer " +
+		"project:org/zeta:developer project:org/zeta:maintainer deploy:prod"
+	if got := strings.Join(names, " "); got != want {
+		t.Fatalf("roles = %s", got)
+	}
+}
+
 func TestTargetStatusPrecedence(t *testing.T) {
 	lockable := config.Target{Lockable: true}
 	preview := config.Target{Preview: true}

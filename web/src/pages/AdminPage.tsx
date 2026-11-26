@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, errorMessage } from '../api/client';
-import type { AuditEvent } from '../api/types';
+import type { AuditEvent, RoleList } from '../api/types';
 import { ErrorBox, Loading, RelTime } from '../components/common';
 import { PreviewTable } from '../components/tables';
 import { useMe } from '../lib/me';
@@ -12,7 +12,7 @@ const PAGE_SIZE = 100;
 export function AdminPage() {
   const me = useMe();
   const { pathname, search } = useLocation();
-  const tab = search.get('tab') === 'previews' ? 'previews' : 'audit';
+  const tab = search.get('tab') ?? 'audit';
 
   if (!me.isAdmin) {
     return (
@@ -35,8 +35,11 @@ export function AdminPage() {
         <button type="button" role="tab" className="tab" aria-selected={tab === 'previews'} onClick={() => navigate(`${pathname}?tab=previews`, { replace: true })}>
           Previews
         </button>
+        <button type="button" role="tab" className="tab" aria-selected={tab === 'roles'} onClick={() => navigate(`${pathname}?tab=roles`, { replace: true })}>
+          Roles
+        </button>
       </div>
-      <div className="section">{tab === 'audit' ? <AuditLog /> : <AdminPreviews />}</div>
+      <div className="section">{tab === 'previews' ? <AdminPreviews /> : tab === 'roles' ? <AdminRoles /> : <AuditLog />}</div>
     </div>
   );
 }
@@ -53,6 +56,48 @@ function AdminPreviews() {
         </div>
       )}
       <PreviewTable previews={res.data} onChanged={res.reload} admin />
+    </>
+  );
+}
+
+// The partial import format of Keycloak (Realm settings > Action > Partial import).
+// SKIP keeps roles that exist, so the file can be imported again after every config change.
+export function keycloakImport(list: RoleList): string {
+  return JSON.stringify({ ifResourceExists: 'SKIP', roles: { client: { [list.clientId]: list.roles } } }, null, 2);
+}
+
+function AdminRoles() {
+  const res = useApi('admin-roles', api.roles);
+  if (!res.data) return res.error ? <ErrorBox error={res.error} /> : <Loading />;
+  const href = `data:application/json;charset=utf-8,${encodeURIComponent(keycloakImport(res.data))}`;
+  return (
+    <>
+      <p className="muted">
+        The client roles of <code>{res.data.clientId}</code> that the configuration uses. simple-cd does not create them.
+        Import the file in Keycloak under Realm settings, Action, Partial import; existing roles stay as they are.
+        Who gets which role you decide in Keycloak.
+      </p>
+      <p>
+        <a className="btn" href={href} download={`${res.data.clientId}-roles.json`}>Download Keycloak import</a>
+      </p>
+      <div className="table-wrap">
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Role</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            {res.data.roles.map((r) => (
+              <tr key={r.name}>
+                <td><code>{r.name}</code></td>
+                <td>{r.description}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </>
   );
 }

@@ -1,6 +1,6 @@
 import type {
   Artifact, AuditEvent, Deployment, DeploymentDetail, Me, Plan, Preview, Project,
-  ProjectSummary, Source, TargetDetail,
+  ProjectSummary, RoleList, Source, TargetDetail,
 } from './types';
 
 export class ApiError extends Error {
@@ -85,6 +85,7 @@ export const api = {
   audit: (before?: number) =>
     request<AuditEvent[]>('GET', `/api/admin/audit${before === undefined ? '' : `?before=${before}`}`),
   adminPreviews: () => request<Preview[]>('GET', '/api/admin/previews'),
+  roles: () => request<RoleList>('GET', '/api/admin/roles'),
   logout: () => request<{ logoutUrl: string }>('POST', '/auth/logout'),
 };
 

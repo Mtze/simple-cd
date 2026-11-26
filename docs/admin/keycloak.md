@@ -99,8 +99,13 @@ To check it, log in to simple-cd and open the user menu: it lists your roles.
 
 ## Create project roles
 
-simple-cd does not create Keycloak roles itself.
-This script creates the two roles of a project with `kcadm.sh` and optionally assigns them to groups:
+simple-cd does not create Keycloak roles itself, because that would need admin rights on the whole realm.
+Instead it lists the roles the configuration uses: open **Admin > Roles** in the UI as a platform admin.
+**Download Keycloak import** gives a file for **Realm settings > Action > Partial import**.
+It skips roles that already exist, so import it again after every new project or target role.
+Which users or groups get a role stays your decision in Keycloak; simple-cd does not expect one group per project.
+
+To create roles from a script instead, this one creates the two roles of a project with `kcadm.sh` and optionally assigns them to groups:
 
 ```sh
 #!/bin/sh

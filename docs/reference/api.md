@@ -249,6 +249,15 @@ Pass the smallest `id` of a page as `before` to get the next page.
 
 All live previews including orphaned ones.
 
+### `GET /api/admin/roles` (platform admin)
+
+The Keycloak client roles the configuration uses: `platform-admin`, `viewer`, the two roles of every project and every target `role`.
+`clientId` is the OIDC client that holds them.
+
+```json
+{ "clientId": "simple-cd", "roles": [{ "name": "project:org/app:developer", "description": "simple-cd: deploy org/app" }] }
+```
+
 ### Auth
 
 - `GET /auth/login?return=/path` starts the OIDC login (authorization code with PKCE).

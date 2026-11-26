@@ -124,4 +124,7 @@ export type DeploymentDetail = Deployment & { target: Target };
 // Pushed over GET /api/events when data changed on any replica.
 export type ChangeEvent = { kind: 'artifacts'; project: string };
 
+export type Role = { name: string; description: string };
+export type RoleList = { clientId: string; roles: Role[] };
+
 export type AuditEvent = { id: number; at: string; actor: string; action: string; object: string; details: unknown };

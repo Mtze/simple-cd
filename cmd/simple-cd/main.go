@@ -189,6 +189,7 @@ func serve() error {
 
 	srv := &api.Server{
 		Store: st, Config: cfg, Core: svc, Auth: authn, Runner: run, BaseURL: baseURL, Events: events,
+		ClientID:      env("SIMPLECD_OIDC_CLIENT_ID", ""),
 		WebhookSecret: []byte(env("SIMPLECD_GITHUB_WEBHOOK_SECRET", "")), UI: web.Dist(),
 		Ingest: &ingest.Ingester{Config: cfg, Store: st, Core: svc, Registry: checker,
 			GitHub: func(id int64) ingest.RepoAPI { return app.Client(id) }},

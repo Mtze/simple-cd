@@ -47,6 +47,7 @@ type Server struct {
 	BaseURL       string // public URL, used for the Origin check and HSTS
 	UI            fs.FS  // built UI; nil serves a placeholder
 	Events        *Hub   // change events for /api/events
+	ClientID      string // OIDC client that holds the roles, for /api/admin/roles
 }
 
 func (s *Server) Handler() http.Handler {
@@ -69,6 +70,7 @@ func (s *Server) Handler() http.Handler {
 	api.HandleFunc("DELETE /api/previews/{id}", s.teardownPreview)
 	api.HandleFunc("GET /api/admin/audit", s.admin(s.audit))
 	api.HandleFunc("GET /api/admin/previews", s.admin(s.allPreviews))
+	api.HandleFunc("GET /api/admin/roles", s.admin(s.roles))
 	api.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) { writeError(w, 404, "not_found", "not found") })
 	mux.Handle("/api/", noStore(s.csrf(s.Auth.Middleware(api))))
 
@@ -592,6 +594,10 @@ func (s *Server) allPreviews(w http.ResponseWriter, r *http.Request) {
 		out = append(out, s.previewView(cfg, u, p))
 	}
 	writeJSON(w, 200, out)
+}
+
+func (s *Server) roles(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, 200, map[string]any{"clientId": s.ClientID, "roles": core.Roles(s.Config.Get())})
 }
 
 func (s *Server) ready(w http.ResponseWriter, r *http.Request) {

@@ -80,7 +80,7 @@ targets:
 	svc := &core.Service{Store: st, Config: holder, Registry: okRegistry{}}
 	s := &Server{
 		Store: st, Config: holder, Core: svc, Auth: fakeAuth{}, WebhookSecret: []byte("hook"),
-		BaseURL: "https://cd.example.org", Events: &Hub{},
+		BaseURL: "https://cd.example.org", Events: &Hub{}, ClientID: "simple-cd",
 		Ingest: &ingest.Ingester{Config: holder, Store: st, Core: svc},
 		UI:     fstest.MapFS{"index.html": {Data: []byte("<html>app</html>")}, "assets/app.js": {Data: []byte("js")}},
 	}
@@ -246,6 +246,18 @@ func TestAdminOnly(t *testing.T) {
 	resp.Body.Close()
 	if len(events) != 1 {
 		t.Fatalf("events = %v", events)
+	}
+}
+
+func TestAdminRoles(t *testing.T) {
+	e := setup(t)
+	if resp, _ := e.do(t, &dev, "GET", "/api/admin/roles", nil); resp.StatusCode != 403 {
+		t.Fatalf("dev: %d", resp.StatusCode)
+	}
+	resp, out := e.do(t, &admin, "GET", "/api/admin/roles", nil)
+	roles, _ := out["roles"].([]any)
+	if resp.StatusCode != 200 || out["clientId"] != "simple-cd" || len(roles) != 5 {
+		t.Fatalf("%d %v", resp.StatusCode, out)
 	}
 }
 
